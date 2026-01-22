@@ -1,0 +1,496 @@
+---
+title: "Audit de la qualité des données ouvertes"
+subtitle: "Dernière mise à jour le `r format(as.Date(Sys.Date(), format = '%Y-%m-%d'),'%d %B %Y')`"
+author: Datactivist
+date: 01/21/2026
+format:
+  html:
+    toc: true
+    toc-title: Sommaire
+    toc-location: left
+    number-sections: true
+    page-layout: full
+    code-links:
+      - text: Script pre-run R
+        icon: file-code
+        href: Script_audit.R
+    html-table-processing: none
+theme: united
+highlight: textmate
+execute:
+  echo: false
+  warning: false
+  message: false
+  eval: true
+  collapse: true
+  fig.show: "hold"
+---
+
+```{=html}
+<style>
+
+.summarytable th {
+    padding-bottom: 40px;
+    text-align: center;
+}
+
+</style>
+```
+```{r}
+#| label: logo
+
+# Logo haut de page
+htmltools::img(src = "figures/logos.png", 
+               alt = 'logo', 
+               style = 'position:absolute; top:0; left:0.4; padding-top:200px;') #padding=taille des espaces autour
+```
+
+<br>
+
+<br>
+
+<br>
+
+# Introduction
+
+Ce rapport d'analyse montre la qualité des données d'éducation publiées sur le portail open data du *Ministère de l'Éducation Nationale* (MEN) [data.education.gouv.fr](https://data.education.gouv.fr/pages/accueil/).
+
+L'analyse de qualité porte sur les 30 jeux de données les plus téléchargés parmi les 220 disponibles au 21 janvier 2026. Les jeux sont les suivants : 
+
+- Le calendrier scolaire ;
+- Annuaire de l'éducation ; 
+- Adresse et géolocalisation des établissements d'enseignement des premier et second degrés ;
+- Réussite au baccalauréat selon l'âge ;
+- Agenda du ministre de l'Éducation Nationale ;
+- Contour académies 2020 ;
+- Résultats détaillés au DNB ;
+- Indices de position sociale des écoles (à partir de 2022) ;
+- Effectifs d'élèves par école ;
+- Diplôme national du brevet par établissement ;
+- Indices de position sociale des écoles (2026-2021) ;
+- Indicateurs de valeur ajoutée des lycées d'enseignement général et technologiques (ancien) ;
+- Indices de position sociale des collèges (2016-2021) ;
+- Indices de position sociale dans les lycées (2022) ;
+- Indices de position sociale dans les collèges (2022) ;
+- Établissements fermés ;
+- Effectifs d'élèves en lycée d'enseignement général et technologique ;
+- Réussite au baccalauréat selon l'origine sociale ;
+- Effectifs d'élèves en collège ;
+- Indices de position sociale des lycées (2016-2021) ;
+- Etablissements de l'éducation prioritaire ;
+- Parcoursup 2025 - voeux de poursuite d'études et de réorientation dans l'enseignement supérieur et réponses des ; établissements ;
+- Le baccalauréat par académie ;
+- Covid 19 - points de situation nationaux ;
+- Carte scolaire des collèges publics ;
+- Établissements labellisés "génération 2024" ;
+- Indices de position sociale des collèges (à partir de 2023) ;
+- Organisation du temps scolaire ;
+- Indices de position sociale des lycées (à partir de 2023) ;
+- Effectifs d'élèves en lycée professionnel.
+
+<br>
+
+L'**analyse de la qualité** des jeux de données se compose de différents éléments : 
+
+- **aperçu général** : une table offrant une vision globale du jeu de données avec pour chaque colonne ; son type, ses 5 premières valeurs et leur fréquence, le nombre et la part de valeurs manquantes ;
+- **complétude** : une table montrant le taux de valeurs manquantes par colonne ainsi que la statistique moyenne. Les colonnes sont ordonnées par taux de valeurs manquantes décroissant, pour mettre en avant les colonnes ayant le plus de "trous" ;
+- **distribution des variables** : des graphiques (1 par colonne) montrant la distribution des variables selon leur type : 
+  - *qualitatif (top 10)* : rassemble les types caractère et facteur. Seules les 10 premières valeurs sont affichées sur le graphique pour garantir sa lisibilité ;
+  - *numérique* : rassemble les variables numériques (entières ou décimales), en retirant celles ayant ce type mais étant composées uniquement de *0* et *1* ;
+  - *booléen* : rassemble les variables booléennes (y compris celles déclarées '*numériques*') ;
+  - *date* : rassemble les variables temporelles.
+  
+<br>
+  
+
+
+```{r}
+# Packages
+library(tidyverse)
+library(summarytools)
+library(janitor)
+library(gt)
+library(gtExtras)
+library(plotly)
+library(htmltools)
+
+# Thème pour les graphiques
+theme_custom <- function (){
+    ggplot2::theme(plot.title = ggplot2::element_text(size = 15, face = "bold", color = "#222222"), 
+        axis.text = ggplot2::element_text(size = 9, color = "#222222"), 
+        axis.text.x = ggplot2::element_text(margin = ggplot2::margin(5,b = 10)), 
+        axis.title = ggplot2::element_text(size = 11, color = "#222222"),
+        axis.ticks = ggplot2::element_blank(),
+        axis.line = ggplot2::element_blank(), 
+        panel.grid.minor = ggplot2::element_blank(),
+        panel.grid.major.y = ggplot2::element_line(color = "#cbcbcb"),
+        panel.grid.major.x = ggplot2::element_blank(), 
+        panel.background = ggplot2::element_blank(),
+        strip.background = ggplot2::element_rect(fill = "white"),
+        strip.text = ggplot2::element_text(size = 22, hjust = 0, face = "bold"),
+        text = element_text(family = "Open Sans"))
+}
+```
+
+
+# Le calendrier scolaire
+
+```{r}
+# Données
+data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-calendrier-scolaire/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
+
+# Stats
+duplicates <- nrow(data) - n_distinct(data)
+duplicates_label <- ifelse(duplicates==0, 
+                           paste(duplicates, "doublon"),
+                           paste(duplicates, "doublons"))
+```
+
+Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
+
+Il contient `r duplicates_label`.
+
+Il a été téléchargé *x* fois.
+
+
+## Aperçu général
+
+```{r}
+apercu_dfsummary <- function(df){
+  print(dfSummary(df,
+                style = "grid", graph.magnif = 1, 
+                valid.col = FALSE, varnumbers = FALSE, tmp.img.dir = "/tmp", 
+                max.distinct.values = 5, headings = FALSE, method = "render", 
+                col.widths  = c(300, 200, 100, 50, 20)),
+      max.tbl.height = 600,
+      method = "render")
+}
+apercu_dfsummary(data)
+```
+
+## Complétude
+
+```{r}
+table_na <- function(df){
+  # Préparation
+  nb_NA <- as.data.frame(colSums(is.na(df))) |>
+    setNames("Nombre de valeurs manquantes") |>
+    rownames_to_column("Champs") |>
+    mutate(`% de la colonne manquante` = round(`Nombre de valeurs manquantes`/nrow(df)*100, 2)) |>
+    arrange(desc(`% de la colonne manquante`)) |>
+    (\(x) bind_rows(x,
+      summarise(x, Champs = "Complétude moyenne",
+                `Nombre de valeurs manquantes` = mean(`Nombre de valeurs manquantes`),
+                `% de la colonne manquante` = mean(`% de la colonne manquante`))
+    ))() |>
+    mutate(`Nombre de valeurs manquantes` = format(as.integer(`Nombre de valeurs manquantes`), 
+                                                   nsmall = 1, big.mark = "."))
+  
+  # Affichage table
+  nb_NA |> 
+    gt() |> 
+    # Titres
+    tab_header(title = md(paste("**Complétude des champs du jeu de données** (sur", 
+                                format(nrow(df), nsmall = 1, big.mark = "."), "lignes)"))) |>
+    # Stype de la table
+    tab_style(style = list(cell_text(weight = "lighter")), locations = cells_body(columns = Champs)) |>  
+    # % en barres
+    gt_plt_bar_pct(`% de la colonne manquante`, scaled = TRUE, labels=TRUE, decimals = 0, 
+                   width = 180, font_size = "14px", fill = "#343333", height = 20) |> 
+    # couleur des noms de groupes
+    tab_style(style = list(cell_fill(color = "#B4B1B1", alpha = .4),
+                           cell_text(weight = "bold"),
+                           cell_borders(sides = c("t", "b"), color = "white", weight = px(2))),
+              locations = cells_row_groups()) |> 
+    # mise en forme des colonnes
+    cols_align(align = "left", columns = c(`Nombre de valeurs manquantes`, `% de la colonne manquante`)) |> 
+    cols_width(`Nombre de valeurs manquantes` ~ "30%") |> 
+    # retirer la ligne horizontale au-dessus du titre
+    tab_options(table.border.top.style = "none", 
+                table.border.top.width = px(0)) |>    
+    # Total en gras
+    tab_style(style = list(cell_text(weight = "bold")),
+              locations = cells_body(columns = everything(), 
+                                     rows = Champs == "Complétude moyenne"))
+}
+table_na(data)
+```
+
+
+## Distribution des variables 
+
+::: {.panel-tabset}
+
+### Qualitatif (top 10)
+
+```{r}
+barplot_var_car <- function(df){
+  
+  #fonction pour ploter les colonnes 1 à 1
+  barplot_character <- function(df, col_name){
+    my_plot <- df |> 
+          janitor::tabyl(!!sym(col_name)) |> 
+          arrange(desc(n)) |> 
+          slice_head(n = 10) |> 
+          mutate(!!sym(col_name) := forcats::fct_reorder(!!sym(col_name), n)) |>
+          ggplot(aes(x = !!sym(col_name), y = n, 
+                     text = paste0(n, " occurrences, ", round(percent, 1), "%"))) +
+            geom_col(fill = "#25539c", width = 0.8) +
+            coord_flip() +
+            scale_x_discrete(labels = function(x) stringr::str_wrap(x, width = 40)) +
+            labs(title = col_name, x = NULL, y = "Fréquence") +
+            theme_custom() +
+            theme(panel.grid.major.x = ggplot2::element_line(color = "#cbcbcb"),
+                  panel.grid.major.y = ggplot2::element_blank())
+    ggplotly(my_plot, tooltip = "text")
+  }
+  
+  #filtre sur les colonnes qualitatives
+  char_cols <- names(df)[sapply(df, function(x) is.character(x) | is.factor(x))]
+  
+  #création des plots
+  plots_list <- lapply(char_cols, function(col) {
+    barplot_character(df, col)
+  })
+  #affichage sur 2 colonnes
+  tagList(tags$div(style = "display: flex; flex-wrap: wrap; gap: 20px;",
+                   lapply(plots_list, function(p) {
+                     tags$div(style = "flex: 0 0 48%; min-width: 400px;", p) })))
+}
+barplot_var_car(data)
+```
+
+
+### Numérique
+
+```{r}
+barplot_var_num <- function(df){
+  
+  #fonction pour ploter les colonnes 1 à 1
+  histogram_numeric <- function(df, col_name){
+    #prépa données
+    data_filtered <- df |>
+      filter(!is.na(!!sym(col_name)))
+    #plot
+    my_plot <- data_filtered |>
+      ggplot(aes(x = !!sym(col_name))) +
+        geom_histogram(aes(y = after_stat(count),
+                           text = paste0("Intervalle: ", round(after_stat(x), 0), 
+                                       "<br>Nombre: ", after_stat(count))),
+                       fill = "#25539c", 
+                       color = "white",
+                       bins = 30) +
+        labs(title = col_name, 
+             x = col_name, 
+             y = "Fréquence") +
+        theme_custom() +
+        theme(panel.grid.major = ggplot2::element_line(color = "#cbcbcb"))
+    ggplotly(my_plot, tooltip = "text") |>
+      layout(autosize = TRUE)
+  }
+  
+  #fonction pour détecter si une colonne est booléenne
+  is_boolean <- function(x) {
+    if (!is.numeric(x)) return(FALSE)
+    unique_vals <- unique(na.omit(x))
+    all(unique_vals %in% c(0, 1)) && length(unique_vals) <= 2
+  }
+  
+  #filtre sur les colonnes numériques NON booléennes
+  numeric_cols <- names(df)[sapply(df, function(x) {
+    is.numeric(x) & !inherits(x, "Date") & !inherits(x, "POSIXct") & !is_boolean(x)
+  })]
+  
+  #création des plots
+  plots_list <- lapply(numeric_cols, function(col) {
+    histogram_numeric(df, col)
+  })
+  #affichage sur 2 colonnes
+  tagList(tags$div(style = "display: grid; grid-template-columns: repeat(2, 1fr); gap: 30px; margin: 20px 0; width: 100%; overflow: hidden;",
+                   lapply(plots_list, function(p) {
+                     tags$div(style = "min-width: 0; overflow: hidden;", p) 
+                     })))
+}
+barplot_var_num(data)
+```
+
+
+### Booléen
+
+```{r}
+barplot_var_bool <- function(df){
+
+  #fonction pour ploter les colonnes 1 à 1
+  barplot_boolean <- function(df, col_name){
+    #prépa données
+    bool_counts <- df |>
+      filter(!is.na(!!sym(col_name))) |>
+      mutate(value = factor(!!sym(col_name), 
+                           levels = c(0, 1), 
+                           labels = c("Non (0)", "Oui (1)"))) |>
+      count(value, .drop = FALSE) |>
+      mutate(percent = n / sum(n) * 100)
+    #plot
+    my_plot <- bool_counts |>
+      ggplot(aes(x = value, y = n, 
+                 text = paste0(n, " occurrences, ", round(percent, 1), "%"))) +
+        geom_col(fill = "#25539c", width = 0.6) +
+        labs(title = col_name, 
+             x = NULL, 
+             y = "Fréquence") +
+        theme_custom() +
+        theme(panel.grid.major.x = ggplot2::element_blank(),
+              panel.grid.major.y = ggplot2::element_line(color = "#cbcbcb"))
+    
+    ggplotly(my_plot, tooltip = "text") |>
+      layout(autosize = TRUE)
+  }
+  
+  #fonction pour détecter si une colonne est booléenne
+  is_boolean <- function(x) {
+    if (!is.numeric(x)) return(FALSE)
+    unique_vals <- unique(na.omit(x))
+    all(unique_vals %in% c(0, 1)) && length(unique_vals) <= 2
+  }
+
+  #filtre sur les colonnes numériques booléennes
+  boolean_cols <- names(df)[sapply(df, is_boolean)]
+  
+  #création des plots
+  plots_list_bool <- lapply(boolean_cols, function(col) {
+    barplot_boolean(df, col)
+  })
+  #affichage sur 2 colonnes
+  tagList(tags$div(style = "display: grid; grid-template-columns: repeat(2, 1fr); gap: 30px; margin: 20px 0; width: 100%; overflow: hidden;",
+                   lapply(plots_list_bool, function(p) {
+                     tags$div(style = "min-width: 0; overflow: hidden;", p)
+                     })))
+}
+barplot_var_bool(data)
+```
+
+### Date
+
+```{r}
+lineplot_var_date <- function(df){
+  
+  lineplot_date <- function(df, col_name){
+    #prépa données
+    date_counts <- df |>
+      filter(!is.na(!!sym(col_name))) |>
+      mutate(date = as.Date(!!sym(col_name))) |>
+      count(date) |>
+      arrange(date)
+    #plot
+    my_plot <- date_counts |>
+    ggplot(aes(x = date, y = n)) +
+      geom_area(aes(group = 1), fill = "#25539c", alpha = .3) +
+      geom_line(aes(group = 1,
+                    text = paste0("Date: ", format(date, "%Y-%m-%d"), "<br>Occurrences: ", n)), 
+                color = "#25539c", linewidth = .4) +
+      geom_point(aes(group = 1,
+                    text = paste0("Date: ", format(date, "%Y-%m-%d"), "<br>Occurrences: ", n)),
+                 color = "#25539c", size = .3) + 
+        labs(title = col_name, 
+             x = "Date", 
+             y = "Fréquence") +
+        theme_custom() +
+        theme(panel.grid.major = ggplot2::element_line(color = "#cbcbcb"),
+              axis.text.x = element_text(angle = 45, hjust = 1))
+    
+    ggplotly(my_plot, tooltip = "text") |>
+      layout(autosize = TRUE) 
+  }
+  
+  #filtre sur les colonnes de date
+  date_cols <- names(df)[sapply(df, function(x) {
+    inherits(x, "Date") | inherits(x, "POSIXct") | inherits(x, "POSIXt")
+  })]
+  
+  #création des plots
+  plots_list <- lapply(date_cols, function(col) {
+    lineplot_date(df, col)
+  })
+  #affichage sur 2 colonnes
+  tagList(tags$div(style = "display: grid; grid-template-columns: repeat(2, 1fr); gap: 30px; margin: 20px 0; width: 100%; overflow: hidden;",
+                   lapply(plots_list, function(p) {
+        tags$div(style = "min-width: 0; overflow: hidden;", p) })
+    ))
+}
+lineplot_var_date(data)
+```
+
+:::
+
+## Autres indicateurs de qualité
+
+
+<br>
+
+# Annuaire de l'éducation
+
+
+```{r}
+data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-annuaire-education/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
+
+# Stats
+duplicates <- nrow(data) - n_distinct(data)
+duplicates_label <- ifelse(duplicates==0, 
+                           paste(duplicates, "doublon"),
+                           paste(duplicates, "doublons"))
+```
+
+Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
+
+Il contient `r duplicates_label`.
+
+Il a été téléchargé *x* fois.
+
+## Aperçu général
+
+```{r}
+apercu_dfsummary(data)
+```
+
+## Complétude
+
+```{r}
+table_na(data)
+```
+
+
+## Distribution des variables 
+
+::: {.panel-tabset}
+
+### Qualitatif (top 10)
+
+```{r}
+barplot_var_car(data)
+```
+
+
+### Numérique
+
+```{r}
+barplot_var_num(data)
+```
+
+
+### Booléen
+
+```{r}
+barplot_var_bool(data)
+```
+
+
+### Date
+
+```{r}
+lineplot_var_date(data)
+```
+
+:::
+
+## Autres indicateurs de qualité
+
