@@ -6,7 +6,8 @@ library(summarytools)
 library(explore) #install.packages("explore")
 
 # Données
-catalogue <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/exports/csv?delimiter=%3B&lang=fr")
+catalogue <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/exports/csv?delimiter=%3B&lang=fr") |> 
+  select(default.title, datasetid)
 data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-calendrier-scolaire/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
 test <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-annuaire-education/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
 
