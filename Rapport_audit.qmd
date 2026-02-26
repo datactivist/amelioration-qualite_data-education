@@ -55,38 +55,38 @@ htmltools::img(src = "figures/logos.png",
 
 Ce rapport d'analyse montre la qualité des données d'éducation publiées sur le portail open data du *Ministère de l'Éducation Nationale* (MEN) [data.education.gouv.fr](https://data.education.gouv.fr/pages/accueil/).
 
-L'analyse de qualité porte sur les 30 jeux de données les plus téléchargés parmi les 220 disponibles au 21 janvier 2026. Les jeux sont les suivants : 
+L'analyse de qualité porte sur les 30 jeux de données les plus populaires parmi les 345 disponibles au 25 février 2026 (en ayant exclu les sujets circonstanciels). Les jeux sont les suivants : 
 
-- Le calendrier scolaire ;
-- Annuaire de l'éducation ; 
-- Adresse et géolocalisation des établissements d'enseignement des premier et second degrés ;
-- Réussite au baccalauréat selon l'âge ;
-- Agenda du ministre de l'Éducation Nationale ;
-- Contour académies 2020 ;
-- Résultats détaillés au DNB ;
-- Indices de position sociale des écoles (à partir de 2022) ;
-- Effectifs d'élèves par école ;
-- Diplôme national du brevet par établissement ;
-- Indices de position sociale des écoles (2026-2021) ;
-- Indicateurs de valeur ajoutée des lycées d'enseignement général et technologiques (ancien) ;
-- Indices de position sociale des collèges (2016-2021) ;
-- Indices de position sociale dans les lycées (2022) ;
-- Indices de position sociale dans les collèges (2022) ;
+- Annuaire de l'éducation ;
+- Adresse et géolocalisation des établissements des premier et second degrés ;
 - Établissements fermés ;
-- Effectifs d'élèves en lycée d'enseignement général et technologique ;
-- Réussite au baccalauréat selon l'origine sociale ;
-- Effectifs d'élèves en collège ;
-- Indices de position sociale des lycées (2016-2021) ;
-- Etablissements de l'éducation prioritaire ;
-- Parcoursup 2025 - voeux de poursuite d'études et de réorientation dans l'enseignement supérieur et réponses des établissements ;
+- Effectifs d’élèves par école ;
+- Effectifs d’élèves en collège ;
+- Effectifs d’élèves en lycée d'enseignement général et technologique ;
+- Effectifs d’élèves en lycée professionnel ;
+- Effectifs des élèves en voie professionnelle ou BTS ;
+- Mode d'hébergement des élèves dans les établissements du second degré ;
 - Le baccalauréat par académie ;
-- Covid 19 - points de situation nationaux ;
+- Réussite au baccalauréat par département ;
+- Réussite au baccalauréat selon l’origine sociale ;
+- Proportion de bacheliers dans une génération ;
+- Diplôme national du brevet par département, série et sexe ;
+- Résultats détaillés au DNB ;
+- Candidats au CAP par département et sexe ;
+- Résultats par spécialité, sexe, statut et département au CAP ;
+- Indicateurs de ségrégation sociale entre collèges dans les départements ;
+- Indicateurs d'encadrement H/E et E/S à la rentrée dans le secteur public ;
+- Indicateurs d'encadrement H/E et E/S à la rentrée dans le secteur privé sous contrat ;
+- Offre de langues dans les collèges et lycées ;
+- Sections internationales et classes menant au baccalauréat français international (BFI) ;
+- DNMA - Métriques par UAI croisées par les profils ;
+- DNMA - Métriques par UAI croisées par les services ;
+- DNMA - Métriques par UAI croisées par les appareils ;
+- Pix - Résultats par palier des parcours de rentrée pour les élèves des collèges et lycées ;
+- Effectifs dans les enseignements de spécialité en Première générale ;
 - Carte scolaire des collèges publics ;
-- Établissements labellisés "génération 2024" ;
-- Indices de position sociale des collèges (à partir de 2023) ;
-- Organisation du temps scolaire ;
-- Indices de position sociale des lycées (à partir de 2023) ;
-- Effectifs d'élèves en lycée professionnel.
+- Établissements labellisés Euroscol ;
+- Sections Sportives Scolaires.
 
 <br>
 
@@ -128,11 +128,12 @@ theme_custom <- function (){
 ```
 
 
-# Le calendrier scolaire
+
+# Annuaire de l'éducation
+
 
 ```{r}
-# Données
-data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-calendrier-scolaire/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
+data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-annuaire-education/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
 
 # Stats
 duplicates <- nrow(data) - n_distinct(data)
@@ -145,8 +146,7 @@ Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes e
 
 Il contient `r duplicates_label`.
 
-Il a été téléchargé *x* fois.
-
+Il a été téléchargé *373.244* fois et a fait l'objet de *62.405.110* appels API.
 
 ## Aperçu général
 
@@ -167,7 +167,6 @@ apercu_dfsummary(data)
 ## Autres indicateurs de qualité
 
 ### Longueur des champs 'description'
-
 
 ```{r}
 plot_description_lengths <- function(data) {
@@ -224,46 +223,9 @@ plot_description_lengths <- function(data) {
   
 }
 plot_description_lengths(data)
-
 # Afficher un summary
-cat("\nStatistiques de la variable")
-summary(plot_data$nb_char)
-```
-
-<br>
-
-# Annuaire de l'éducation
-
-
-```{r}
-data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-annuaire-education/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
-
-# Stats
-duplicates <- nrow(data) - n_distinct(data)
-duplicates_label <- ifelse(duplicates==0, 
-                           paste(duplicates, "doublon"),
-                           paste(duplicates, "doublons"))
-```
-
-Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
-
-Il contient `r duplicates_label`.
-
-Il a été téléchargé *x* fois.
-
-## Aperçu général
-
-```{r}
-apercu_dfsummary(data)
-```
-
-
-## Autres indicateurs de qualité
-
-### Longueur des champs 'description'
-
-```{r}
-plot_description_lengths(data)
+# cat("\nStatistiques de la variable")
+# summary(plot_data$nb_char)
 ```
 
 
@@ -286,455 +248,7 @@ Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes e
 
 Il contient `r duplicates_label`.
 
-Il a été téléchargé *x* fois.
-
-## Aperçu général
-
-```{r}
-apercu_dfsummary(data)
-```
-
-
-## Autres indicateurs de qualité
-
-### Longueur des champs 'description'
-
-```{r}
-plot_description_lengths(data)
-```
-
-
-<br>
-
-# Réussite au baccalauréat selon l’âge
-
-
-```{r}
-data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-reussite-au-baccalaureat-age/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
-
-# Stats
-duplicates <- nrow(data) - n_distinct(data)
-duplicates_label <- ifelse(duplicates==0, 
-                           paste(duplicates, "doublon"),
-                           paste(duplicates, "doublons"))
-```
-
-Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
-
-Il contient `r duplicates_label`.
-
-Il a été téléchargé *x* fois.
-
-## Aperçu général
-
-```{r}
-apercu_dfsummary(data)
-```
-
-
-## Autres indicateurs de qualité
-
-### Longueur des champs 'description'
-
-```{r}
-plot_description_lengths(data)
-```
-
-
-<br>
-
-# Agenda du ministre de l’Éducation Nationale
-
-
-```{r}
-data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-agenda-ministre-education-nationale/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
-
-# Stats
-duplicates <- nrow(data) - n_distinct(data)
-duplicates_label <- ifelse(duplicates==0, 
-                           paste(duplicates, "doublon"),
-                           paste(duplicates, "doublons"))
-```
-
-Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
-
-Il contient `r duplicates_label`.
-
-Il a été téléchargé *x* fois.
-
-## Aperçu général
-
-```{r}
-apercu_dfsummary(data)
-```
-
-
-## Autres indicateurs de qualité
-
-### Longueur des champs 'description'
-
-```{r}
-plot_description_lengths(data)
-
-# Afficher un summary
-cat("\nStatistiques de la variable")
-summary(plot_data$nb_char)
-```
-
-
-<br>
-
-# Contour académies 2020
-
-
-```{r}
-data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-contour-academies-2020/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
-
-# Stats
-duplicates <- nrow(data) - n_distinct(data)
-duplicates_label <- ifelse(duplicates==0, 
-                           paste(duplicates, "doublon"),
-                           paste(duplicates, "doublons"))
-```
-
-Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
-
-Il contient `r duplicates_label`.
-
-Il a été téléchargé *x* fois.
-
-## Aperçu général
-
-```{r}
-apercu_dfsummary(data)
-```
-
-
-## Autres indicateurs de qualité
-
-### Longueur des champs 'description'
-
-```{r}
-plot_description_lengths(data)
-```
-
-
-<br>
-
-# Résultats détaillés au DNB
-
-
-```{r}
-data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-resultats-detailles-au-dnb/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
-
-# Stats
-duplicates <- nrow(data) - n_distinct(data)
-duplicates_label <- ifelse(duplicates==0, 
-                           paste(duplicates, "doublon"),
-                           paste(duplicates, "doublons"))
-```
-
-Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
-
-Il contient `r duplicates_label`.
-
-Il a été téléchargé *x* fois.
-
-## Aperçu général
-
-```{r}
-apercu_dfsummary(data)
-```
-
-
-## Autres indicateurs de qualité
-
-### Longueur des champs 'description'
-
-```{r}
-plot_description_lengths(data)
-```
-
-
-<br>
-
-# Indices de position sociale des écoles (à partir de 2022)
-
-
-```{r}
-data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-ips-ecoles-ap2022/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
-
-# Stats
-duplicates <- nrow(data) - n_distinct(data)
-duplicates_label <- ifelse(duplicates==0, 
-                           paste(duplicates, "doublon"),
-                           paste(duplicates, "doublons"))
-```
-
-Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
-
-Il contient `r duplicates_label`.
-
-Il a été téléchargé *x* fois.
-
-## Aperçu général
-
-```{r}
-apercu_dfsummary(data)
-```
-
-
-## Autres indicateurs de qualité
-
-### Longueur des champs 'description'
-
-```{r}
-plot_description_lengths(data)
-```
-
-
-<br>
-
-# Effectifs d’élèves par école
-
-
-```{r}
-data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-ecoles-effectifs-nb_classes/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
-
-# Stats
-duplicates <- nrow(data) - n_distinct(data)
-duplicates_label <- ifelse(duplicates==0, 
-                           paste(duplicates, "doublon"),
-                           paste(duplicates, "doublons"))
-```
-
-Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
-
-Il contient `r duplicates_label`.
-
-Il a été téléchargé *x* fois.
-
-## Aperçu général
-
-```{r}
-apercu_dfsummary(data)
-```
-
-
-## Autres indicateurs de qualité
-
-### Longueur des champs 'description'
-
-```{r}
-plot_description_lengths(data)
-```
-
-
-<br>
-
-# Diplôme national du brevet par établissement
-
-
-```{r}
-data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-dnb-par-etablissement/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
-
-# Stats
-duplicates <- nrow(data) - n_distinct(data)
-duplicates_label <- ifelse(duplicates==0, 
-                           paste(duplicates, "doublon"),
-                           paste(duplicates, "doublons"))
-```
-
-Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
-
-Il contient `r duplicates_label`.
-
-Il a été téléchargé *x* fois.
-
-## Aperçu général
-
-```{r}
-apercu_dfsummary(data)
-```
-
-
-## Autres indicateurs de qualité
-
-### Longueur des champs 'description'
-
-```{r}
-plot_description_lengths(data)
-```
-
-
-<br>
-
-# Indices de position sociale des écoles (2026-2021)
-
-
-```{r}
-data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-ips_ecoles_v2/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
-
-# Stats
-duplicates <- nrow(data) - n_distinct(data)
-duplicates_label <- ifelse(duplicates==0, 
-                           paste(duplicates, "doublon"),
-                           paste(duplicates, "doublons"))
-```
-
-Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
-
-Il contient `r duplicates_label`.
-
-Il a été téléchargé *x* fois.
-
-## Aperçu général
-
-```{r}
-apercu_dfsummary(data)
-```
-
-
-## Autres indicateurs de qualité
-
-### Longueur des champs 'description'
-
-```{r}
-plot_description_lengths(data)
-```
-
-
-<br>
-
-# Indicateurs de valeur ajoutée des lycées d’enseignement général et technologiques (ancien)
-
-
-```{r}
-data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-indicateurs-de-resultat-des-lycees-denseignement-general-et-technologique/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
-
-# Stats
-duplicates <- nrow(data) - n_distinct(data)
-duplicates_label <- ifelse(duplicates==0, 
-                           paste(duplicates, "doublon"),
-                           paste(duplicates, "doublons"))
-```
-
-Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
-
-Il contient `r duplicates_label`.
-
-Il a été téléchargé *x* fois.
-
-## Aperçu général
-
-```{r}
-apercu_dfsummary(data)
-```
-
-
-## Autres indicateurs de qualité
-
-### Longueur des champs 'description'
-
-```{r}
-plot_description_lengths(data)
-```
-
-
-<br>
-
-# Indices de position sociale des collèges (2016-2021)
-
-
-```{r}
-data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-ips_colleges/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
-
-# Stats
-duplicates <- nrow(data) - n_distinct(data)
-duplicates_label <- ifelse(duplicates==0, 
-                           paste(duplicates, "doublon"),
-                           paste(duplicates, "doublons"))
-```
-
-Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
-
-Il contient `r duplicates_label`.
-
-Il a été téléchargé *x* fois.
-
-## Aperçu général
-
-```{r}
-apercu_dfsummary(data)
-```
-
-
-## Autres indicateurs de qualité
-
-### Longueur des champs 'description'
-
-```{r}
-plot_description_lengths(data)
-```
-
-
-<br>
-
-# Indices de position sociale dans les lycées (2022)
-
-
-```{r}
-data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-ips-lycees-ap2022/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
-
-# Stats
-duplicates <- nrow(data) - n_distinct(data)
-duplicates_label <- ifelse(duplicates==0, 
-                           paste(duplicates, "doublon"),
-                           paste(duplicates, "doublons"))
-```
-
-Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
-
-Il contient `r duplicates_label`.
-
-Il a été téléchargé *x* fois.
-
-## Aperçu général
-
-```{r}
-apercu_dfsummary(data)
-```
-
-
-## Autres indicateurs de qualité
-
-### Longueur des champs 'description'
-
-```{r}
-plot_description_lengths(data)
-```
-
-
-<br>
-
-# Indices de position sociale dans les collèges (2022)
-
-
-```{r}
-data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-ips-colleges-ap2022/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
-
-# Stats
-duplicates <- nrow(data) - n_distinct(data)
-duplicates_label <- ifelse(duplicates==0, 
-                           paste(duplicates, "doublon"),
-                           paste(duplicates, "doublons"))
-```
-
-Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
-
-Il contient `r duplicates_label`.
-
-Il a été téléchargé *x* fois.
+Il a été téléchargé *311.824* fois et a fait l'objet de *21.201.143* appels API.
 
 ## Aperçu général
 
@@ -771,7 +285,7 @@ Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes e
 
 Il contient `r duplicates_label`.
 
-Il a été téléchargé *x* fois.
+Il a été téléchargé *32.351* fois et a fait l'objet de *2.381.934* appels API.
 
 ## Aperçu général
 
@@ -791,11 +305,11 @@ plot_description_lengths(data)
 
 <br>
 
-# Effectifs d’élèves en lycée d’enseignement général et technologique
+# Effectifs d’élèves par école
 
 
 ```{r}
-data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-lycee_gt-effectifs-niveau-sexe-lv/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
+data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-ecoles-effectifs-nb_classes/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
 
 # Stats
 duplicates <- nrow(data) - n_distinct(data)
@@ -808,44 +322,7 @@ Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes e
 
 Il contient `r duplicates_label`.
 
-Il a été téléchargé *x* fois.
-
-## Aperçu général
-
-```{r}
-apercu_dfsummary(data)
-```
-
-
-## Autres indicateurs de qualité
-
-### Longueur des champs 'description'
-
-```{r}
-plot_description_lengths(data)
-```
-
-
-<br>
-
-# Réussite au baccalauréat selon l’origine sociale
-
-
-```{r}
-data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-reussite-au-baccalaureat-origine-sociale/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
-
-# Stats
-duplicates <- nrow(data) - n_distinct(data)
-duplicates_label <- ifelse(duplicates==0, 
-                           paste(duplicates, "doublon"),
-                           paste(duplicates, "doublons"))
-```
-
-Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
-
-Il contient `r duplicates_label`.
-
-Il a été téléchargé *x* fois.
+Il a été téléchargé *50.085* fois et a fait l'objet de *1.208.511* appels API.
 
 ## Aperçu général
 
@@ -882,7 +359,7 @@ Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes e
 
 Il contient `r duplicates_label`.
 
-Il a été téléchargé *x* fois.
+Il a été téléchargé *27.298* fois et a fait l'objet de *919.196* appels API.
 
 ## Aperçu général
 
@@ -900,13 +377,14 @@ plot_description_lengths(data)
 ```
 
 
+
 <br>
 
-# Indices de position sociale des lycées (2016-2021)
+# Effectifs d'élèves en lycée d’enseignement général et technologique
 
 
 ```{r}
-data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-ips_lycees/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
+data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-lycee_gt-effectifs-niveau-sexe-lv/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
 
 # Stats
 duplicates <- nrow(data) - n_distinct(data)
@@ -919,7 +397,7 @@ Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes e
 
 Il contient `r duplicates_label`.
 
-Il a été téléchargé *x* fois.
+Il a été téléchargé *31.707* fois et a fait l'objet de *430.342* appels API.
 
 ## Aperçu général
 
@@ -937,13 +415,14 @@ plot_description_lengths(data)
 ```
 
 
+
 <br>
 
-# Etablissements de l’éducation prioritaire
+# Effectifs d’élèves en lycée professionnel
 
 
 ```{r}
-data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-etablissements-ep/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
+data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-lycee_pro-effectifs-niveau-sexe-lv/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
 
 # Stats
 duplicates <- nrow(data) - n_distinct(data)
@@ -956,7 +435,7 @@ Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes e
 
 Il contient `r duplicates_label`.
 
-Il a été téléchargé *x* fois.
+Il a été téléchargé *15.287* fois et a fait l'objet de *267.827* appels API.
 
 ## Aperçu général
 
@@ -974,13 +453,15 @@ plot_description_lengths(data)
 ```
 
 
+
+
 <br>
 
-# Parcoursup 2025 - voeux de poursuite d’études et de réorientation dans l’enseignement supérieur et réponses des établissements
+# Effectifs des élèves en voie professionnelle ou BTS
 
 
 ```{r}
-data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-esr-parcoursup/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
+data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-lycee_pro-effectifs-niveau-sexe-mef/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
 
 # Stats
 duplicates <- nrow(data) - n_distinct(data)
@@ -993,7 +474,45 @@ Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes e
 
 Il contient `r duplicates_label`.
 
-Il a été téléchargé *x* fois.
+Il a été téléchargé *x* fois et a fait l'objet de ** appels API.
+
+## Aperçu général
+
+```{r}
+apercu_dfsummary(data)
+```
+
+
+## Autres indicateurs de qualité
+
+### Longueur des champs 'description'
+
+```{r}
+plot_description_lengths(data)
+```
+
+
+
+<br>
+
+# Mode d’hébergement des élèves dans les établissements du second degré
+
+
+```{r}
+data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-mode-hebergement-eleves-etablissements-2d/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
+
+# Stats
+duplicates <- nrow(data) - n_distinct(data)
+duplicates_label <- ifelse(duplicates==0, 
+                           paste(duplicates, "doublon"),
+                           paste(duplicates, "doublons"))
+```
+
+Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
+
+Il contient `r duplicates_label`.
+
+Il a été téléchargé *x* fois et a fait l'objet de ** appels API.
 
 ## Aperçu général
 
@@ -1030,7 +549,121 @@ Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes e
 
 Il contient `r duplicates_label`.
 
-Il a été téléchargé *x* fois.
+Il a été téléchargé *x* fois et a fait l'objet de ** appels API.
+
+## Aperçu général
+
+```{r}
+apercu_dfsummary(data)
+```
+
+
+## Autres indicateurs de qualité
+
+### Longueur des champs 'description'
+
+```{r}
+plot_description_lengths(data)
+```
+
+
+
+<br>
+
+# Réussite au baccalauréat par département
+
+
+```{r}
+data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-baccalaureat-par-departement/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
+
+# Stats
+duplicates <- nrow(data) - n_distinct(data)
+duplicates_label <- ifelse(duplicates==0, 
+                           paste(duplicates, "doublon"),
+                           paste(duplicates, "doublons"))
+```
+
+Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
+
+Il contient `r duplicates_label`.
+
+Il a été téléchargé *x* fois et a fait l'objet de ** appels API.
+
+## Aperçu général
+
+```{r}
+apercu_dfsummary(data)
+```
+
+
+## Autres indicateurs de qualité
+
+### Longueur des champs 'description'
+
+```{r}
+plot_description_lengths(data)
+```
+
+
+
+<br>
+
+# Réussite au baccalauréat selon l’origine sociale
+
+
+```{r}
+data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-reussite-au-baccalaureat-origine-sociale/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
+
+# Stats
+duplicates <- nrow(data) - n_distinct(data)
+duplicates_label <- ifelse(duplicates==0, 
+                           paste(duplicates, "doublon"),
+                           paste(duplicates, "doublons"))
+```
+
+Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
+
+Il contient `r duplicates_label`.
+
+Il a été téléchargé *x* fois et a fait l'objet de ** appels API.
+
+## Aperçu général
+
+```{r}
+apercu_dfsummary(data)
+```
+
+
+## Autres indicateurs de qualité
+
+### Longueur des champs 'description'
+
+```{r}
+plot_description_lengths(data)
+```
+
+
+
+<br>
+
+# Proportion de bacheliers dans une génération
+
+
+```{r}
+data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-proportion-de-bacheliers-dans-une-generation/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
+
+# Stats
+duplicates <- nrow(data) - n_distinct(data)
+duplicates_label <- ifelse(duplicates==0, 
+                           paste(duplicates, "doublon"),
+                           paste(duplicates, "doublons"))
+```
+
+Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
+
+Il contient `r duplicates_label`.
+
+Il a été téléchargé *x* fois et a fait l'objet de ** appels API.
 
 ## Aperçu général
 
@@ -1050,11 +683,11 @@ plot_description_lengths(data)
 
 <br>
 
-# Covid 19 - points de situation nationaux
+# Diplôme national du brevet par département, série et sexe
 
 
 ```{r}
-data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-situation_nationale_covid/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
+data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-dnb-par-departement/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
 
 # Stats
 duplicates <- nrow(data) - n_distinct(data)
@@ -1067,7 +700,487 @@ Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes e
 
 Il contient `r duplicates_label`.
 
-Il a été téléchargé *x* fois.
+Il a été téléchargé *x* fois et a fait l'objet de ** appels API.
+
+## Aperçu général
+
+```{r}
+apercu_dfsummary(data)
+```
+
+
+## Autres indicateurs de qualité
+
+### Longueur des champs 'description'
+
+```{r}
+plot_description_lengths(data)
+```
+
+
+
+<br>
+
+# Résultats détaillés au DNB
+
+
+```{r}
+data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-resultats-detailles-au-dnb/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
+
+# Stats
+duplicates <- nrow(data) - n_distinct(data)
+duplicates_label <- ifelse(duplicates==0, 
+                           paste(duplicates, "doublon"),
+                           paste(duplicates, "doublons"))
+```
+
+Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
+
+Il contient `r duplicates_label`.
+
+Il a été téléchargé *x* fois et a fait l'objet de ** appels API.
+
+## Aperçu général
+
+```{r}
+apercu_dfsummary(data)
+```
+
+
+## Autres indicateurs de qualité
+
+### Longueur des champs 'description'
+
+```{r}
+plot_description_lengths(data)
+```
+
+
+<br>
+
+# Candidats au CAP par département et sexe
+
+
+```{r}
+data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-cap-par-departement/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
+
+# Stats
+duplicates <- nrow(data) - n_distinct(data)
+duplicates_label <- ifelse(duplicates==0, 
+                           paste(duplicates, "doublon"),
+                           paste(duplicates, "doublons"))
+```
+
+Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
+
+Il contient `r duplicates_label`.
+
+Il a été téléchargé *x* fois et a fait l'objet de ** appels API.
+
+## Aperçu général
+
+```{r}
+apercu_dfsummary(data)
+```
+
+
+## Autres indicateurs de qualité
+
+### Longueur des champs 'description'
+
+```{r}
+plot_description_lengths(data)
+```
+
+
+<br>
+
+# Résultats par spécialité, sexe, statut et département au CAP
+
+
+```{r}
+data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-cap_specialite_sexe_statut_departement/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
+
+# Stats
+duplicates <- nrow(data) - n_distinct(data)
+duplicates_label <- ifelse(duplicates==0, 
+                           paste(duplicates, "doublon"),
+                           paste(duplicates, "doublons"))
+```
+
+Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
+
+Il contient `r duplicates_label`.
+
+Il a été téléchargé *x* fois et a fait l'objet de ** appels API.
+
+## Aperçu général
+
+```{r}
+apercu_dfsummary(data)
+```
+
+
+## Autres indicateurs de qualité
+
+### Longueur des champs 'description'
+
+```{r}
+plot_description_lengths(data)
+```
+
+
+<br>
+
+# Indicateurs de ségrégation sociale entre collèges dans les départements
+
+
+```{r}
+data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-indicateur_segregation_sociale_colleges/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
+
+# Stats
+duplicates <- nrow(data) - n_distinct(data)
+duplicates_label <- ifelse(duplicates==0, 
+                           paste(duplicates, "doublon"),
+                           paste(duplicates, "doublons"))
+```
+
+Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
+
+Il contient `r duplicates_label`.
+
+Il a été téléchargé *x* fois et a fait l'objet de ** appels API.
+
+## Aperçu général
+
+```{r}
+apercu_dfsummary(data)
+```
+
+
+## Autres indicateurs de qualité
+
+### Longueur des champs 'description'
+
+```{r}
+plot_description_lengths(data)
+```
+
+
+<br>
+
+# Indicateurs d'encadrement H/E et E/S à la rentrée dans le secteur public
+
+
+```{r}
+data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-moyens_enseignants_2d_public/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
+
+# Stats
+duplicates <- nrow(data) - n_distinct(data)
+duplicates_label <- ifelse(duplicates==0, 
+                           paste(duplicates, "doublon"),
+                           paste(duplicates, "doublons"))
+```
+
+Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
+
+Il contient `r duplicates_label`.
+
+Il a été téléchargé *x* fois et a fait l'objet de ** appels API.
+
+## Aperçu général
+
+```{r}
+apercu_dfsummary(data)
+```
+
+
+## Autres indicateurs de qualité
+
+### Longueur des champs 'description'
+
+```{r}
+plot_description_lengths(data)
+```
+
+
+<br>
+
+# Indicateurs d'encadrement H/E et E/S à la rentrée dans le secteur privé sous contrat
+
+
+```{r}
+data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-moyens_enseignants_2d_prive/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
+
+# Stats
+duplicates <- nrow(data) - n_distinct(data)
+duplicates_label <- ifelse(duplicates==0, 
+                           paste(duplicates, "doublon"),
+                           paste(duplicates, "doublons"))
+```
+
+Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
+
+Il contient `r duplicates_label`.
+
+Il a été téléchargé *x* fois et a fait l'objet de ** appels API.
+
+## Aperçu général
+
+```{r}
+apercu_dfsummary(data)
+```
+
+
+## Autres indicateurs de qualité
+
+### Longueur des champs 'description'
+
+```{r}
+plot_description_lengths(data)
+```
+
+
+<br>
+
+# Offre de langues dans les collèges et lycées
+
+
+```{r}
+data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-offre-langues-2d/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
+
+# Stats
+duplicates <- nrow(data) - n_distinct(data)
+duplicates_label <- ifelse(duplicates==0, 
+                           paste(duplicates, "doublon"),
+                           paste(duplicates, "doublons"))
+```
+
+Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
+
+Il contient `r duplicates_label`.
+
+Il a été téléchargé *x* fois et a fait l'objet de ** appels API.
+
+## Aperçu général
+
+```{r}
+apercu_dfsummary(data)
+```
+
+
+## Autres indicateurs de qualité
+
+### Longueur des champs 'description'
+
+```{r}
+plot_description_lengths(data)
+```
+
+
+<br>
+
+# Sections internationales et classes menant au baccalauréat français international (BFI)
+
+
+```{r}
+data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-sections-internationales/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
+
+# Stats
+duplicates <- nrow(data) - n_distinct(data)
+duplicates_label <- ifelse(duplicates==0, 
+                           paste(duplicates, "doublon"),
+                           paste(duplicates, "doublons"))
+```
+
+Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
+
+Il contient `r duplicates_label`.
+
+Il a été téléchargé *x* fois et a fait l'objet de ** appels API.
+
+## Aperçu général
+
+```{r}
+apercu_dfsummary(data)
+```
+
+
+## Autres indicateurs de qualité
+
+### Longueur des champs 'description'
+
+```{r}
+plot_description_lengths(data)
+```
+
+
+<br>
+
+# DNMA - Métriques par UAI croisées par les profils
+
+
+```{r}
+data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-dnma-par-uai-profils/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
+
+# Stats
+duplicates <- nrow(data) - n_distinct(data)
+duplicates_label <- ifelse(duplicates==0, 
+                           paste(duplicates, "doublon"),
+                           paste(duplicates, "doublons"))
+```
+
+Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
+
+Il contient `r duplicates_label`.
+
+Il a été téléchargé *x* fois et a fait l'objet de ** appels API.
+
+## Aperçu général
+
+```{r}
+apercu_dfsummary(data)
+```
+
+
+## Autres indicateurs de qualité
+
+### Longueur des champs 'description'
+
+```{r}
+plot_description_lengths(data)
+```
+
+<br>
+
+# DNMA - Métriques par UAI croisées par les services
+
+
+```{r}
+data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-dnma-par-uai-services/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
+
+# Stats
+duplicates <- nrow(data) - n_distinct(data)
+duplicates_label <- ifelse(duplicates==0, 
+                           paste(duplicates, "doublon"),
+                           paste(duplicates, "doublons"))
+```
+
+Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
+
+Il contient `r duplicates_label`.
+
+Il a été téléchargé *x* fois et a fait l'objet de ** appels API.
+
+## Aperçu général
+
+```{r}
+apercu_dfsummary(data)
+```
+
+
+## Autres indicateurs de qualité
+
+### Longueur des champs 'description'
+
+```{r}
+plot_description_lengths(data)
+```
+
+<br>
+
+# DNMA - Métriques par UAI croisées par les appareils
+
+
+```{r}
+data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-dnma-par-uai-appareils/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
+
+# Stats
+duplicates <- nrow(data) - n_distinct(data)
+duplicates_label <- ifelse(duplicates==0, 
+                           paste(duplicates, "doublon"),
+                           paste(duplicates, "doublons"))
+```
+
+Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
+
+Il contient `r duplicates_label`.
+
+Il a été téléchargé *x* fois et a fait l'objet de ** appels API.
+
+## Aperçu général
+
+```{r}
+apercu_dfsummary(data)
+```
+
+
+## Autres indicateurs de qualité
+
+### Longueur des champs 'description'
+
+```{r}
+plot_description_lengths(data)
+```
+
+
+<br>
+
+# Pix - Résultats par palier des parcours de rentrée pour les élèves des collèges et lycées
+
+
+```{r}
+data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-pix_resultats_des_campagnes_de_rentree_par_eple/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
+
+# Stats
+duplicates <- nrow(data) - n_distinct(data)
+duplicates_label <- ifelse(duplicates==0, 
+                           paste(duplicates, "doublon"),
+                           paste(duplicates, "doublons"))
+```
+
+Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
+
+Il contient `r duplicates_label`.
+
+Il a été téléchargé *x* fois et a fait l'objet de ** appels API.
+
+## Aperçu général
+
+```{r}
+apercu_dfsummary(data)
+```
+
+
+## Autres indicateurs de qualité
+
+### Longueur des champs 'description'
+
+```{r}
+plot_description_lengths(data)
+```
+
+
+<br>
+
+# Effectifs dans les enseignements de spécialité en Première générale
+
+
+```{r}
+data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-effectifs-specialites-triplettes-1ere-generale/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
+
+# Stats
+duplicates <- nrow(data) - n_distinct(data)
+duplicates_label <- ifelse(duplicates==0, 
+                           paste(duplicates, "doublon"),
+                           paste(duplicates, "doublons"))
+```
+
+Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
+
+Il contient `r duplicates_label`.
+
+Il a été téléchargé *x* fois et a fait l'objet de ** appels API.
 
 ## Aperçu général
 
@@ -1104,7 +1217,7 @@ Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes e
 
 Il contient `r duplicates_label`.
 
-Il a été téléchargé *x* fois.
+Il a été téléchargé *x* fois et a fait l'objet de ** appels API.
 
 ## Aperçu général
 
@@ -1124,11 +1237,11 @@ plot_description_lengths(data)
 
 <br>
 
-# Établissements labellisés “génération 2024”
+# Établissements labellisés Euroscol 
 
 
 ```{r}
-data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-etablissements-labellises-generation-2024/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
+data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-etablissements-labellises-euroscol/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
 
 # Stats
 duplicates <- nrow(data) - n_distinct(data)
@@ -1141,7 +1254,7 @@ Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes e
 
 Il contient `r duplicates_label`.
 
-Il a été téléchargé *x* fois.
+Il a été téléchargé *x* fois et a fait l'objet de ** appels API.
 
 ## Aperçu général
 
@@ -1161,11 +1274,11 @@ plot_description_lengths(data)
 
 <br>
 
-# Indices de position sociale des collèges (à partir de 2023)
+# Sections Sportives Scolaires
 
 
 ```{r}
-data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-ips-colleges-ap2023/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
+data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-sections-sportives-scolaires/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
 
 # Stats
 duplicates <- nrow(data) - n_distinct(data)
@@ -1178,7 +1291,7 @@ Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes e
 
 Il contient `r duplicates_label`.
 
-Il a été téléchargé *x* fois.
+Il a été téléchargé *x* fois et a fait l'objet de ** appels API.
 
 ## Aperçu général
 
@@ -1196,113 +1309,11 @@ plot_description_lengths(data)
 ```
 
 
-<br>
-
-# Organisation du temps scolaire
 
 
-```{r}
-data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-organisation-du-temps-scolaire/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
-
-# Stats
-duplicates <- nrow(data) - n_distinct(data)
-duplicates_label <- ifelse(duplicates==0, 
-                           paste(duplicates, "doublon"),
-                           paste(duplicates, "doublons"))
-```
-
-Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
-
-Il contient `r duplicates_label`.
-
-Il a été téléchargé *x* fois.
-
-## Aperçu général
-
-```{r}
-apercu_dfsummary(data)
-```
 
 
-## Autres indicateurs de qualité
-
-### Longueur des champs 'description'
-
-```{r}
-plot_description_lengths(data)
-```
 
 
-<br>
 
-# Indices de position sociale des lycées (à partir de 2023)
-
-
-```{r}
-data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-ips-lycees-ap2023/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
-
-# Stats
-duplicates <- nrow(data) - n_distinct(data)
-duplicates_label <- ifelse(duplicates==0, 
-                           paste(duplicates, "doublon"),
-                           paste(duplicates, "doublons"))
-```
-
-Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
-
-Il contient `r duplicates_label`.
-
-Il a été téléchargé *x* fois.
-
-## Aperçu général
-
-```{r}
-apercu_dfsummary(data)
-```
-
-
-## Autres indicateurs de qualité
-
-### Longueur des champs 'description'
-
-```{r}
-plot_description_lengths(data)
-```
-
-
-<br>
-
-# Effectifs d’élèves en lycée professionnel
-
-
-```{r}
-data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-lycee_pro-effectifs-niveau-sexe-lv/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
-
-# Stats
-duplicates <- nrow(data) - n_distinct(data)
-duplicates_label <- ifelse(duplicates==0, 
-                           paste(duplicates, "doublon"),
-                           paste(duplicates, "doublons"))
-```
-
-Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
-
-Il contient `r duplicates_label`.
-
-Il a été téléchargé *x* fois.
-
-## Aperçu général
-
-```{r}
-apercu_dfsummary(data)
-```
-
-
-## Autres indicateurs de qualité
-
-### Longueur des champs 'description'
-
-```{r}
-plot_description_lengths(data)
-```
 
