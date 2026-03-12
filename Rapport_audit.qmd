@@ -24,6 +24,7 @@ execute:
   eval: true
   collapse: true
   fig.show: "hold"
+  cache: true
 ---
 
 ```{=html}
@@ -36,6 +37,7 @@ execute:
 
 </style>
 ```
+
 ```{r}
 #| label: logo
 
@@ -90,10 +92,10 @@ L'analyse de qualité porte sur les 30 jeux de données les plus populaires parm
 
 <br>
 
-L'**analyse de la qualité** des jeux de données se compose de différents éléments : 
+L'**analyse de la qualité** des jeux de données se compose de deux éléments : 
 
 - **aperçu général** : une table offrant une vision globale du jeu de données avec pour chaque colonne ; son type, ses 5 premières valeurs et leur fréquence, le nombre et la part de valeurs manquantes ;
-- **autres indicateurs** : une section rassemblant le calcul d'indicateurs de qualité.
+- **histogramme de complétude** : une visualisation sous forme d'histogramme montrant la distribution de la complétude de toutes les colonnes du jeu de données. Plus la distribution se situe vers la droite, plus les colonnes sont renseignées à 100% (peu de valeurs manquantes).
   
 <br>
   
@@ -133,20 +135,50 @@ theme_custom <- function (){
 
 
 ```{r}
-data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-annuaire-education/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
-
-# Stats
-duplicates <- nrow(data) - n_distinct(data)
-duplicates_label <- ifelse(duplicates==0, 
-                           paste(duplicates, "doublon"),
-                           paste(duplicates, "doublons"))
+data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-annuaire-education/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B", ";")
 ```
 
 Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
 
-Il contient `r duplicates_label`.
+```{r}
+#| eval: false
+#| include: false
 
-Il a été téléchargé *373.244* fois et a fait l'objet de *62.405.110* appels API.
+# Exploration des données pour l'audit qualitatif
+n_distinct(data$Identifiant_de_l_etablissement)
+test <- data |> 
+  mutate(n=n(), .by = Identifiant_de_l_etablissement) |> 
+  arrange(desc(n), Identifiant_de_l_etablissement)
+sub <- test |> 
+  filter(n>1)
+n_distinct(sub$Identifiant_de_l_etablissement)
+
+# Lebourg
+lebourg <- data |> 
+  filter(Adresse_1 == "LEBOURG") |> 
+  select(Adresse_1, precision_localisation)
+
+# Nb digits num tel
+test <- data |> 
+  select(Telephone) |> 
+  mutate(nb_digits = str_count(Telephone, "\\d")) |> 
+  tabyl(nb_digits)
+
+# Vérif mails
+test <- data |> 
+  distinct(Mail) |> 
+  mutate(valide = str_detect(Mail, "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"))
+
+# NA type
+data |> 
+  filter(is.na(Statut_public_prive)) |> 
+  tabyl(Type_etablissement)
+
+# regarder les "LEBOURG" quelle precision_localisation est renseignée
+# regarder les doublons UAI quel etat ? A fermer / ouvert, et multi_uai
+```
+
+
 
 ## Aperçu général
 
@@ -164,69 +196,56 @@ apercu_dfsummary(data)
 ```
 
 
-## Autres indicateurs de qualité
-
-### Longueur des champs 'description'
+## Histogramme de complétude
 
 ```{r}
-plot_description_lengths <- function(data) {
+histo_completude <- function(df, xlabel, ylabel, nom_export){
   
-  # Sélectionner les colonnes contenant "description"
-  desc_cols <- data |> 
-    select(matches("description", ignore.case = TRUE))
+  #Calcul des stats de complétude
+  nb_NA <- as.data.frame(colSums(!is.na(df))) |>
+      setNames("Nombre de valeurs renseignées") |>
+      rownames_to_column("Champs") |>
+      mutate(`% de la colonne renseignée` = round(`Nombre de valeurs renseignées`/nrow(df)*100, 2)) |>
+      arrange(desc(`% de la colonne renseignée`)) |>
+      (\(x) bind_rows(x,
+        summarise(x, Champs = "Complétude moyenne",
+                  `Nombre de valeurs renseignées` = mean(`Nombre de valeurs renseignées`),
+                  `% de la colonne renseignée` = mean(`% de la colonne renseignée`))
+      ))() |>
+      mutate(`Nombre de valeurs renseignées` = format(as.integer(`Nombre de valeurs renseignées`), 
+                                                     nsmall = 1, big.mark = "."))
   
-  # Vérifier qu'il y a au moins une colonne
-  if (ncol(desc_cols) == 0) {
-    warning("Aucune colonne 'description' dans le dataframe")
-    return(NULL)
-  }
+  #Mise en graphique
+  hist <- nb_NA |> 
+    ggplot() +
+    geom_histogram(aes(x = `% de la colonne renseignée`), 
+                   fill = "#9E9E9E", col = "white", bins = 10) +
+    geom_vline(xintercept = mean(nb_NA$`% de la colonne renseignée`, na.rm = TRUE), 
+               linetype = 2, size = 1.5, col = "#af1b76ff") +
+    geom_label(aes(x = mean(`% de la colonne renseignée`, na.rm = T) - xlabel, y = ylabel, 
+                      label = paste("Moyenne :", round(mean(`% de la colonne renseignée`, na.rm = T), 0), "%")), 
+                  col = "#af1b76ff", fill = "#fbf4f8ff", label.size = NA, 
+               fontface = "italic", hjust = 1, size = 4.5) +
+    xlim(0, 106) +
+    theme_classic() +
+    theme(axis.title.y = element_blank(),
+          axis.title.x = element_text(size = 14, colour = "#3d3d3d"),
+          axis.ticks.y = element_blank(),
+          axis.ticks.x = element_line(colour = "#3d3d3d"),
+          axis.line = element_blank(),
+          axis.text.y = element_blank(),
+          axis.text.x = element_text(size = 12, colour = "#3d3d3d"),
+          plot.background = element_rect(fill = "#fbf4f8ff", colour = "#fbf4f8ff"),
+          panel.background = element_rect(fill = "#fbf4f8ff", colour = "#fbf4f8ff"))
   
-  # Liste pour stocker les graphiques
-  plots_list <- list()
-  
-  # Itérer sur chaque colonne description
-  for (col_name in names(desc_cols)) {
-    # Calculer le nombre de caractères
-    plot_data <- data |>
-      mutate(nb_char = nchar(.data[[col_name]], type = "chars")) |>
-      filter(!is.na(nb_char))
-    assign("plot_data", plot_data, envir = .GlobalEnv)
-    
-    # Créer le graphique
-    my_plot <- plot_data |>
-      ggplot(aes(x = nb_char)) +
-      geom_histogram(aes(y = after_stat(count),
-                         text = paste0("Intervalle: ", round(after_stat(x), 0), 
-                                       "<br>Nombre: ", after_stat(count))),
-                     fill = "#25539c", 
-                     bins = 30) +
-      labs(title = col_name,  # Nom de la colonne comme titre
-           x = "Nombre de caractères", 
-           y = "Fréquence") +
-      theme_custom() +
-      theme(panel.grid.major = element_line(color = "#cbcbcb"))
-    
-    # Convertir en plotly
-    plots_list[[col_name]] <- ggplotly(my_plot, tooltip = "text") |>
-      layout(autosize = TRUE)
-    
-    # Afficher le summary
-    summary(plot_data$nb_char)
-  }
-  
-  # Retourner la liste de graphiques (ou un seul si une seule colonne)
-  if (length(plots_list) == 1) {
-    return(plots_list[[1]])
-  } else {
-    return(plots_list)
-  }
-  
+  # Export
+  ggsave(file = paste0("./figures/histo_completude/hist", nom_export, ".png"), 
+         plot = hist, width = 4, height = 2)
+  hist
 }
-plot_description_lengths(data)
-# Afficher un summary
-# cat("\nStatistiques de la variable")
-# summary(plot_data$nb_char)
+histo_completude(data, 2, 15, "1_annuaire")
 ```
+
 
 
 <br>
@@ -235,20 +254,20 @@ plot_description_lengths(data)
 
 
 ```{r}
-data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-adresse-et-geolocalisation-etablissements-premier-et-second-degre/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
-
-# Stats
-duplicates <- nrow(data) - n_distinct(data)
-duplicates_label <- ifelse(duplicates==0, 
-                           paste(duplicates, "doublon"),
-                           paste(duplicates, "doublons"))
+data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-adresse-et-geolocalisation-etablissements-premier-et-second-degre/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B", ";")
 ```
 
 Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
 
-Il contient `r duplicates_label`.
+```{r}
+#| eval: false
+#| include: false
+# Exploration des données pour l'audit qualitatif
+test <- tabyl(data$`Libellé de la nature de l'UAI`)
+test <- data |> filter(is.na(`Adresse : désignation de la voie`))
+```
 
-Il a été téléchargé *311.824* fois et a fait l'objet de *21.201.143* appels API.
+
 
 ## Aperçu général
 
@@ -256,14 +275,12 @@ Il a été téléchargé *311.824* fois et a fait l'objet de *21.201.143* appels
 apercu_dfsummary(data)
 ```
 
-
-## Autres indicateurs de qualité
-
-### Longueur des champs 'description'
+## Histogramme de complétude
 
 ```{r}
-plot_description_lengths(data)
+histo_completude(data, 6, 15, "2_adresse")
 ```
+
 
 
 <br>
@@ -272,20 +289,28 @@ plot_description_lengths(data)
 
 
 ```{r}
-data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-etablissements-fermes/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
-
-# Stats
-duplicates <- nrow(data) - n_distinct(data)
-duplicates_label <- ifelse(duplicates==0, 
-                           paste(duplicates, "doublon"),
-                           paste(duplicates, "doublons"))
+data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-etablissements-fermes/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B", ";")
 ```
 
 Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
 
-Il contient `r duplicates_label`.
+```{r}
+#| eval: false
+#| include: false
+# Exploration des données pour l'audit qualitatif
+test <- data |> 
+  filter(Ecole_maternelle == 1) |> 
+  tabyl(Ecole_elementaire)
+data |> 
+  filter(Ecole_maternelle == 1) |> 
+  tabyl(nature_uai_libe)
+test <- data |> 
+  select(appellation_officielle,denomination_principale,nature_uai_libe,Ecole_maternelle,Ecole_elementaire)
+test <- data |> filter(is.na(localite_acheminement_uai))
+test <- data |> select(code_postal_uai) |> mutate(nb_char = nchar(code_postal_uai))
+```
 
-Il a été téléchargé *32.351* fois et a fait l'objet de *2.381.934* appels API.
+
 
 ## Aperçu général
 
@@ -293,14 +318,13 @@ Il a été téléchargé *32.351* fois et a fait l'objet de *2.381.934* appels A
 apercu_dfsummary(data)
 ```
 
-
-## Autres indicateurs de qualité
-
-### Longueur des champs 'description'
+## Histogramme de complétude
 
 ```{r}
-plot_description_lengths(data)
+histo_completude(data, 6, 15, "3_etablissements")
 ```
+
+
 
 
 <br>
@@ -309,20 +333,28 @@ plot_description_lengths(data)
 
 
 ```{r}
-data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-ecoles-effectifs-nb_classes/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
-
-# Stats
-duplicates <- nrow(data) - n_distinct(data)
-duplicates_label <- ifelse(duplicates==0, 
-                           paste(duplicates, "doublon"),
-                           paste(duplicates, "doublons"))
+data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-ecoles-effectifs-nb_classes/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B", ";")
 ```
 
 Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
 
-Il contient `r duplicates_label`.
+```{r}
+#| eval: false
+#| include: false
+# Exploration des données pour l'audit qualitatif
+n_distinct(data$`Numéro de l'école`)
+tabyl(data$`Dénomination principale`) |> arrange(desc(n))
+test <- data |> 
+  select(`Nombre total d'élèves`:`Nombre d'élèves en CM2 hors ULIS`) |> 
+  rowwise() |> 
+  mutate(mon_total1 = `Nombre d'élèves en pré-élémentaire hors ULIS` + `Nombre d'élèves en élémentaire hors ULIS` + `Nombre d'élèves en ULIS`+`Nombre d'élèves en UEEA`,
+         mon_total2 = `Nombre d'élèves en CM2 hors ULIS`+`Nombre d'élèves en CP hors ULIS`+`Nombre d'élèves en CE1 hors ULIS`+`Nombre d'élèves en CE2 hors ULIS`+`Nombre d'élèves en CM1 hors ULIS`) |> 
+  #select(mon_total, `Nombre total d'élèves`) |> 
+  mutate(different1 = ifelse(mon_total1 != `Nombre total d'élèves`, 1, 0),
+         different2 = ifelse(mon_total2 != `Nombre total d'élèves`, 1, 0))
+```
 
-Il a été téléchargé *50.085* fois et a fait l'objet de *1.208.511* appels API.
+
 
 ## Aperçu général
 
@@ -330,14 +362,12 @@ Il a été téléchargé *50.085* fois et a fait l'objet de *1.208.511* appels A
 apercu_dfsummary(data)
 ```
 
-
-## Autres indicateurs de qualité
-
-### Longueur des champs 'description'
+## Histogramme de complétude
 
 ```{r}
-plot_description_lengths(data)
+histo_completude(data, 12, 15, "4_effectifs-ecole")
 ```
+
 
 
 <br>
@@ -346,20 +376,32 @@ plot_description_lengths(data)
 
 
 ```{r}
-data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-college-effectifs-niveau-sexe-lv/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
-
-# Stats
-duplicates <- nrow(data) - n_distinct(data)
-duplicates_label <- ifelse(duplicates==0, 
-                           paste(duplicates, "doublon"),
-                           paste(duplicates, "doublons"))
+data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-college-effectifs-niveau-sexe-lv/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B", ";")
 ```
 
 Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
 
-Il contient `r duplicates_label`.
+```{r}
+#| eval: false
+#| include: false
+# Exploration des données pour l'audit qualitatif
+test <- data |> 
+  select(REP, `REP +`) |> 
+  mutate(is_both = ifelse(REP == 1 & `REP +` == 1, 1, 0)) |> 
+  tabyl(is_both)
+test
+test <- data |> filter(is.na(`Code académie`))
+tabyl(test$`Région académique`)
+data |> 
+  filter(`Région académique` == "LA REUNION") |> 
+  nrow()
+test <- data |> 
+  filter(is.na(`Code commune`))
+test <- data |> 
+  filter(UAI == "0540060X")
+```
 
-Il a été téléchargé *27.298* fois et a fait l'objet de *919.196* appels API.
+
 
 ## Aperçu général
 
@@ -368,13 +410,13 @@ apercu_dfsummary(data)
 ```
 
 
-## Autres indicateurs de qualité
-
-### Longueur des champs 'description'
+## Histogramme de complétude
 
 ```{r}
-plot_description_lengths(data)
+histo_completude(data, 13, 25, "5_effectifs-college")
 ```
+
+
 
 
 
@@ -384,20 +426,29 @@ plot_description_lengths(data)
 
 
 ```{r}
-data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-lycee_gt-effectifs-niveau-sexe-lv/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
-
-# Stats
-duplicates <- nrow(data) - n_distinct(data)
-duplicates_label <- ifelse(duplicates==0, 
-                           paste(duplicates, "doublon"),
-                           paste(duplicates, "doublons"))
+data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-lycee_gt-effectifs-niveau-sexe-lv/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B", ";")
 ```
 
 Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
 
-Il contient `r duplicates_label`.
+```{r}
+#| eval: false
+#| include: false
+# Exploration des données pour l'audit qualitatif
+test <- data |> 
+  mutate(mon_total = `2ndes GT` + `2ndes STHR` + `2ndes TMD` + `2ndes BT` + 
+           `1ères G` + `1ères STI2D` + `1ères STL` + `1ères STMG` + 
+           `1ères ST2S` + `1ères STD2A` + `1ères STHR` + `1ères TMD` + `1ères BT` +
+           `Terminales G` + `Terminales STI2D` + `Terminales STL` + `Terminales STMG` + `Terminales ST2S` + 
+           `Terminales STD2A` + `Terminales STHR` + `Terminales TMD` + `Terminales BT`,
+         is_same = ifelse(mon_total == `Nombre d'élèves`, 1, 0)) |> 
+  filter(is_same == 0)
+n_distinct(test$UAI)
+tabyl(test$is_same)
+test <- data |> 
+  tabyl(`Dénomination principale`)
+```
 
-Il a été téléchargé *31.707* fois et a fait l'objet de *430.342* appels API.
 
 ## Aperçu général
 
@@ -406,13 +457,13 @@ apercu_dfsummary(data)
 ```
 
 
-## Autres indicateurs de qualité
-
-### Longueur des champs 'description'
+## Histogramme de complétude
 
 ```{r}
-plot_description_lengths(data)
+histo_completude(data, 13, 50, "6_effectifs-lycee-techno")
 ```
+
+
 
 
 
@@ -422,20 +473,18 @@ plot_description_lengths(data)
 
 
 ```{r}
-data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-lycee_pro-effectifs-niveau-sexe-lv/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
-
-# Stats
-duplicates <- nrow(data) - n_distinct(data)
-duplicates_label <- ifelse(duplicates==0, 
-                           paste(duplicates, "doublon"),
-                           paste(duplicates, "doublons"))
+data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-lycee_pro-effectifs-niveau-sexe-lv/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B", ";")
 ```
 
 Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
 
-Il contient `r duplicates_label`.
-
-Il a été téléchargé *15.287* fois et a fait l'objet de *267.827* appels API.
+```{r}
+#| eval: false
+#| include: false
+# Exploration des données pour l'audit qualitatif
+test <- data |> 
+  tabyl(`Dénomination principale`)
+```
 
 ## Aperçu général
 
@@ -443,14 +492,14 @@ Il a été téléchargé *15.287* fois et a fait l'objet de *267.827* appels API
 apercu_dfsummary(data)
 ```
 
-
-## Autres indicateurs de qualité
-
-### Longueur des champs 'description'
+## Histogramme de complétude
 
 ```{r}
-plot_description_lengths(data)
+histo_completude(data, 13, 35, "7_effectifs-lycee-pro")
 ```
+
+
+
 
 
 
@@ -461,20 +510,18 @@ plot_description_lengths(data)
 
 
 ```{r}
-data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-lycee_pro-effectifs-niveau-sexe-mef/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
-
-# Stats
-duplicates <- nrow(data) - n_distinct(data)
-duplicates_label <- ifelse(duplicates==0, 
-                           paste(duplicates, "doublon"),
-                           paste(duplicates, "doublons"))
+data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-lycee_pro-effectifs-niveau-sexe-mef/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B", ";")
 ```
 
 Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
 
-Il contient `r duplicates_label`.
-
-Il a été téléchargé *x* fois et a fait l'objet de ** appels API.
+```{r}
+#| eval: false
+#| include: false
+# Exploration des données pour l'audit qualitatif
+test <- data |> 
+  tabyl(`Dénomination principale`)
+```
 
 ## Aperçu général
 
@@ -483,13 +530,13 @@ apercu_dfsummary(data)
 ```
 
 
-## Autres indicateurs de qualité
-
-### Longueur des champs 'description'
+## Histogramme de complétude
 
 ```{r}
-plot_description_lengths(data)
+histo_completude(data, 10, 15, "8_effectifs-BTS")
 ```
+
+
 
 
 
@@ -499,20 +546,12 @@ plot_description_lengths(data)
 
 
 ```{r}
-data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-mode-hebergement-eleves-etablissements-2d/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
-
-# Stats
-duplicates <- nrow(data) - n_distinct(data)
-duplicates_label <- ifelse(duplicates==0, 
-                           paste(duplicates, "doublon"),
-                           paste(duplicates, "doublons"))
+data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-mode-hebergement-eleves-etablissements-2d/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B", ";")
 ```
 
 Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
 
-Il contient `r duplicates_label`.
 
-Il a été téléchargé *x* fois et a fait l'objet de ** appels API.
 
 ## Aperçu général
 
@@ -521,13 +560,13 @@ apercu_dfsummary(data)
 ```
 
 
-## Autres indicateurs de qualité
-
-### Longueur des champs 'description'
+## Histogramme de complétude
 
 ```{r}
-plot_description_lengths(data)
+histo_completude(data, 13, 15, "9_mode")
 ```
+
+
 
 
 <br>
@@ -536,20 +575,12 @@ plot_description_lengths(data)
 
 
 ```{r}
-data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-baccalaureat-par-academie/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
-
-# Stats
-duplicates <- nrow(data) - n_distinct(data)
-duplicates_label <- ifelse(duplicates==0, 
-                           paste(duplicates, "doublon"),
-                           paste(duplicates, "doublons"))
+data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-baccalaureat-par-academie/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B", ";")
 ```
 
 Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
 
-Il contient `r duplicates_label`.
 
-Il a été téléchargé *x* fois et a fait l'objet de ** appels API.
 
 ## Aperçu général
 
@@ -558,13 +589,13 @@ apercu_dfsummary(data)
 ```
 
 
-## Autres indicateurs de qualité
-
-### Longueur des champs 'description'
+## Histogramme de complétude
 
 ```{r}
-plot_description_lengths(data)
+histo_completude(data, 13, 15, "10_baccalaureat")
 ```
+
+
 
 
 
@@ -574,20 +605,12 @@ plot_description_lengths(data)
 
 
 ```{r}
-data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-baccalaureat-par-departement/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
-
-# Stats
-duplicates <- nrow(data) - n_distinct(data)
-duplicates_label <- ifelse(duplicates==0, 
-                           paste(duplicates, "doublon"),
-                           paste(duplicates, "doublons"))
+data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-baccalaureat-par-departement/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B", ";")
 ```
 
 Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
 
-Il contient `r duplicates_label`.
 
-Il a été téléchargé *x* fois et a fait l'objet de ** appels API.
 
 ## Aperçu général
 
@@ -596,13 +619,13 @@ apercu_dfsummary(data)
 ```
 
 
-## Autres indicateurs de qualité
-
-### Longueur des champs 'description'
+## Histogramme de complétude
 
 ```{r}
-plot_description_lengths(data)
+histo_completude(data, 13, 7, "11_reussite-departement")
 ```
+
+
 
 
 
@@ -612,20 +635,12 @@ plot_description_lengths(data)
 
 
 ```{r}
-data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-reussite-au-baccalaureat-origine-sociale/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
-
-# Stats
-duplicates <- nrow(data) - n_distinct(data)
-duplicates_label <- ifelse(duplicates==0, 
-                           paste(duplicates, "doublon"),
-                           paste(duplicates, "doublons"))
+data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-reussite-au-baccalaureat-origine-sociale/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B", ";")
 ```
 
 Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
 
-Il contient `r duplicates_label`.
 
-Il a été téléchargé *x* fois et a fait l'objet de ** appels API.
 
 ## Aperçu général
 
@@ -634,13 +649,13 @@ apercu_dfsummary(data)
 ```
 
 
-## Autres indicateurs de qualité
-
-### Longueur des champs 'description'
+## Histogramme de complétude
 
 ```{r}
-plot_description_lengths(data)
+histo_completude(data, 13, 7, "12_reussite-origine")
 ```
+
+
 
 
 
@@ -650,20 +665,12 @@ plot_description_lengths(data)
 
 
 ```{r}
-data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-proportion-de-bacheliers-dans-une-generation/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
-
-# Stats
-duplicates <- nrow(data) - n_distinct(data)
-duplicates_label <- ifelse(duplicates==0, 
-                           paste(duplicates, "doublon"),
-                           paste(duplicates, "doublons"))
+data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-proportion-de-bacheliers-dans-une-generation/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B", ";")
 ```
 
 Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
 
-Il contient `r duplicates_label`.
 
-Il a été téléchargé *x* fois et a fait l'objet de ** appels API.
 
 ## Aperçu général
 
@@ -672,13 +679,13 @@ apercu_dfsummary(data)
 ```
 
 
-## Autres indicateurs de qualité
-
-### Longueur des champs 'description'
+## Histogramme de complétude
 
 ```{r}
-plot_description_lengths(data)
+histo_completude(data, 2, 3, "13_proportion")
 ```
+
+
 
 
 <br>
@@ -687,20 +694,12 @@ plot_description_lengths(data)
 
 
 ```{r}
-data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-dnb-par-departement/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
-
-# Stats
-duplicates <- nrow(data) - n_distinct(data)
-duplicates_label <- ifelse(duplicates==0, 
-                           paste(duplicates, "doublon"),
-                           paste(duplicates, "doublons"))
+data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-dnb-par-departement/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B", ";")
 ```
 
 Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
 
-Il contient `r duplicates_label`.
 
-Il a été téléchargé *x* fois et a fait l'objet de ** appels API.
 
 ## Aperçu général
 
@@ -709,12 +708,10 @@ apercu_dfsummary(data)
 ```
 
 
-## Autres indicateurs de qualité
-
-### Longueur des champs 'description'
+## Histogramme de complétude
 
 ```{r}
-plot_description_lengths(data)
+histo_completude(data, 13, 10, "14_diplome")
 ```
 
 
@@ -725,20 +722,12 @@ plot_description_lengths(data)
 
 
 ```{r}
-data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-resultats-detailles-au-dnb/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
-
-# Stats
-duplicates <- nrow(data) - n_distinct(data)
-duplicates_label <- ifelse(duplicates==0, 
-                           paste(duplicates, "doublon"),
-                           paste(duplicates, "doublons"))
+data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-resultats-detailles-au-dnb/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B", ";")
 ```
 
 Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
 
-Il contient `r duplicates_label`.
 
-Il a été téléchargé *x* fois et a fait l'objet de ** appels API.
 
 ## Aperçu général
 
@@ -747,13 +736,13 @@ apercu_dfsummary(data)
 ```
 
 
-## Autres indicateurs de qualité
-
-### Longueur des champs 'description'
+## Histogramme de complétude
 
 ```{r}
-plot_description_lengths(data)
+histo_completude(data, 10, 15, "15_resultats-DNB")
 ```
+
+
 
 
 <br>
@@ -762,20 +751,12 @@ plot_description_lengths(data)
 
 
 ```{r}
-data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-cap-par-departement/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
-
-# Stats
-duplicates <- nrow(data) - n_distinct(data)
-duplicates_label <- ifelse(duplicates==0, 
-                           paste(duplicates, "doublon"),
-                           paste(duplicates, "doublons"))
+data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-cap-par-departement/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B", ";")
 ```
 
 Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
 
-Il contient `r duplicates_label`.
 
-Il a été téléchargé *x* fois et a fait l'objet de ** appels API.
 
 ## Aperçu général
 
@@ -784,13 +765,13 @@ apercu_dfsummary(data)
 ```
 
 
-## Autres indicateurs de qualité
-
-### Longueur des champs 'description'
+## Histogramme de complétude
 
 ```{r}
-plot_description_lengths(data)
+histo_completude(data, 13, 7, "16_candidats")
 ```
+
+
 
 
 <br>
@@ -799,20 +780,12 @@ plot_description_lengths(data)
 
 
 ```{r}
-data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-cap_specialite_sexe_statut_departement/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
-
-# Stats
-duplicates <- nrow(data) - n_distinct(data)
-duplicates_label <- ifelse(duplicates==0, 
-                           paste(duplicates, "doublon"),
-                           paste(duplicates, "doublons"))
+data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-cap_specialite_sexe_statut_departement/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B", ";")
 ```
 
 Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
 
-Il contient `r duplicates_label`.
 
-Il a été téléchargé *x* fois et a fait l'objet de ** appels API.
 
 ## Aperçu général
 
@@ -821,13 +794,13 @@ apercu_dfsummary(data)
 ```
 
 
-## Autres indicateurs de qualité
-
-### Longueur des champs 'description'
+## Histogramme de complétude
 
 ```{r}
-plot_description_lengths(data)
+histo_completude(data, 13, 10, "17_resultats-CAP")
 ```
+
+
 
 
 <br>
@@ -836,20 +809,12 @@ plot_description_lengths(data)
 
 
 ```{r}
-data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-indicateur_segregation_sociale_colleges/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
-
-# Stats
-duplicates <- nrow(data) - n_distinct(data)
-duplicates_label <- ifelse(duplicates==0, 
-                           paste(duplicates, "doublon"),
-                           paste(duplicates, "doublons"))
+data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-indicateur_segregation_sociale_colleges/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B", ";")
 ```
 
 Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
 
-Il contient `r duplicates_label`.
 
-Il a été téléchargé *x* fois et a fait l'objet de ** appels API.
 
 ## Aperçu général
 
@@ -858,13 +823,13 @@ apercu_dfsummary(data)
 ```
 
 
-## Autres indicateurs de qualité
-
-### Longueur des champs 'description'
+## Histogramme de complétude
 
 ```{r}
-plot_description_lengths(data)
+histo_completude(data, 10, 15, "18_indicateurs-segregation")
 ```
+
+
 
 
 <br>
@@ -873,20 +838,12 @@ plot_description_lengths(data)
 
 
 ```{r}
-data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-moyens_enseignants_2d_public/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
-
-# Stats
-duplicates <- nrow(data) - n_distinct(data)
-duplicates_label <- ifelse(duplicates==0, 
-                           paste(duplicates, "doublon"),
-                           paste(duplicates, "doublons"))
+data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-moyens_enseignants_2d_public/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B", ";")
 ```
 
 Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
 
-Il contient `r duplicates_label`.
 
-Il a été téléchargé *x* fois et a fait l'objet de ** appels API.
 
 ## Aperçu général
 
@@ -895,12 +852,10 @@ apercu_dfsummary(data)
 ```
 
 
-## Autres indicateurs de qualité
-
-### Longueur des champs 'description'
+## Histogramme de complétude
 
 ```{r}
-plot_description_lengths(data)
+histo_completude(data, 13, 10, "19_indicateurs-public")
 ```
 
 
@@ -910,20 +865,12 @@ plot_description_lengths(data)
 
 
 ```{r}
-data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-moyens_enseignants_2d_prive/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
-
-# Stats
-duplicates <- nrow(data) - n_distinct(data)
-duplicates_label <- ifelse(duplicates==0, 
-                           paste(duplicates, "doublon"),
-                           paste(duplicates, "doublons"))
+data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-moyens_enseignants_2d_prive/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B", ";")
 ```
 
 Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
 
-Il contient `r duplicates_label`.
 
-Il a été téléchargé *x* fois et a fait l'objet de ** appels API.
 
 ## Aperçu général
 
@@ -932,13 +879,13 @@ apercu_dfsummary(data)
 ```
 
 
-## Autres indicateurs de qualité
-
-### Longueur des champs 'description'
+## Histogramme de complétude
 
 ```{r}
-plot_description_lengths(data)
+histo_completude(data, 13, 10, "20_indicateurs-prive")
 ```
+
+
 
 
 <br>
@@ -947,20 +894,12 @@ plot_description_lengths(data)
 
 
 ```{r}
-data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-offre-langues-2d/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
-
-# Stats
-duplicates <- nrow(data) - n_distinct(data)
-duplicates_label <- ifelse(duplicates==0, 
-                           paste(duplicates, "doublon"),
-                           paste(duplicates, "doublons"))
+data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-offre-langues-2d/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B", ";")
 ```
 
 Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
 
-Il contient `r duplicates_label`.
 
-Il a été téléchargé *x* fois et a fait l'objet de ** appels API.
 
 ## Aperçu général
 
@@ -969,13 +908,13 @@ apercu_dfsummary(data)
 ```
 
 
-## Autres indicateurs de qualité
-
-### Longueur des champs 'description'
+## Histogramme de complétude
 
 ```{r}
-plot_description_lengths(data)
+histo_completude(data, 13, 10, "21_offre")
 ```
+
+
 
 
 <br>
@@ -984,20 +923,12 @@ plot_description_lengths(data)
 
 
 ```{r}
-data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-sections-internationales/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
-
-# Stats
-duplicates <- nrow(data) - n_distinct(data)
-duplicates_label <- ifelse(duplicates==0, 
-                           paste(duplicates, "doublon"),
-                           paste(duplicates, "doublons"))
+data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-sections-internationales/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B", ";")
 ```
 
 Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
 
-Il contient `r duplicates_label`.
 
-Il a été téléchargé *x* fois et a fait l'objet de ** appels API.
 
 ## Aperçu général
 
@@ -1006,13 +937,13 @@ apercu_dfsummary(data)
 ```
 
 
-## Autres indicateurs de qualité
-
-### Longueur des champs 'description'
+## Histogramme de complétude
 
 ```{r}
-plot_description_lengths(data)
+histo_completude(data, 2, 5, "22_sections-BFI")
 ```
+
+
 
 
 <br>
@@ -1021,35 +952,34 @@ plot_description_lengths(data)
 
 
 ```{r}
-data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-dnma-par-uai-profils/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
-
-# Stats
-duplicates <- nrow(data) - n_distinct(data)
-duplicates_label <- ifelse(duplicates==0, 
-                           paste(duplicates, "doublon"),
-                           paste(duplicates, "doublons"))
+#| eval: false
+#| include: false
+curl::curl_download("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-dnma-par-uai-profils/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B", 
+                    destfile = "data.csv")
+data <- vroom::vroom("data.csv", delim = ";")
 ```
 
 Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
 
-Il contient `r duplicates_label`.
 
-Il a été téléchargé *x* fois et a fait l'objet de ** appels API.
 
 ## Aperçu général
 
 ```{r}
+#| eval: false
+#| include: false
 apercu_dfsummary(data)
 ```
 
 
-## Autres indicateurs de qualité
-
-### Longueur des champs 'description'
+## Histogramme de complétude
 
 ```{r}
-plot_description_lengths(data)
+#| eval: false
+#| include: false
+histo_completude(data, 10, 15, "23_DNMA-profils")
 ```
+
 
 <br>
 
@@ -1057,35 +987,35 @@ plot_description_lengths(data)
 
 
 ```{r}
-data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-dnma-par-uai-services/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
-
-# Stats
-duplicates <- nrow(data) - n_distinct(data)
-duplicates_label <- ifelse(duplicates==0, 
-                           paste(duplicates, "doublon"),
-                           paste(duplicates, "doublons"))
+#| eval: false
+#| include: false
+curl::curl_download("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-dnma-par-uai-services/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B", 
+                    destfile = "data.csv")
+data <- vroom::vroom("data.csv", delim = ";")
 ```
 
 Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
 
-Il contient `r duplicates_label`.
 
-Il a été téléchargé *x* fois et a fait l'objet de ** appels API.
 
 ## Aperçu général
 
 ```{r}
+#| eval: false
+#| include: false
 apercu_dfsummary(data)
 ```
 
 
-## Autres indicateurs de qualité
-
-### Longueur des champs 'description'
+## Histogramme de complétude
 
 ```{r}
-plot_description_lengths(data)
+#| eval: false
+#| include: false
+histo_completude(data, 13, 40, "24_DNMA-services")
 ```
+
+
 
 <br>
 
@@ -1093,35 +1023,35 @@ plot_description_lengths(data)
 
 
 ```{r}
-data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-dnma-par-uai-appareils/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
-
-# Stats
-duplicates <- nrow(data) - n_distinct(data)
-duplicates_label <- ifelse(duplicates==0, 
-                           paste(duplicates, "doublon"),
-                           paste(duplicates, "doublons"))
+#| eval: false
+#| include: false
+curl::curl_download("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-dnma-par-uai-appareils/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B", 
+                    destfile = "data.csv")
+data <- vroom::vroom("data.csv", delim = ";")
 ```
 
 Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
 
-Il contient `r duplicates_label`.
 
-Il a été téléchargé *x* fois et a fait l'objet de ** appels API.
 
 ## Aperçu général
 
 ```{r}
+#| eval: false
+#| include: false
 apercu_dfsummary(data)
 ```
 
 
-## Autres indicateurs de qualité
-
-### Longueur des champs 'description'
+## Histogramme de complétude
 
 ```{r}
-plot_description_lengths(data)
+#| eval: false
+#| include: false
+histo_completude(data, 13, 40, "25_DNMA-appareils")
 ```
+
+
 
 
 <br>
@@ -1130,20 +1060,12 @@ plot_description_lengths(data)
 
 
 ```{r}
-data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-pix_resultats_des_campagnes_de_rentree_par_eple/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
-
-# Stats
-duplicates <- nrow(data) - n_distinct(data)
-duplicates_label <- ifelse(duplicates==0, 
-                           paste(duplicates, "doublon"),
-                           paste(duplicates, "doublons"))
+data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-pix_resultats_des_campagnes_de_rentree_par_eple/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B", ";")
 ```
 
 Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
 
-Il contient `r duplicates_label`.
 
-Il a été téléchargé *x* fois et a fait l'objet de ** appels API.
 
 ## Aperçu général
 
@@ -1152,13 +1074,13 @@ apercu_dfsummary(data)
 ```
 
 
-## Autres indicateurs de qualité
-
-### Longueur des champs 'description'
+## Histogramme de complétude
 
 ```{r}
-plot_description_lengths(data)
+histo_completude(data, 13, 15, "26_Pix")
 ```
+
+
 
 
 <br>
@@ -1167,20 +1089,14 @@ plot_description_lengths(data)
 
 
 ```{r}
-data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-effectifs-specialites-triplettes-1ere-generale/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
-
-# Stats
-duplicates <- nrow(data) - n_distinct(data)
-duplicates_label <- ifelse(duplicates==0, 
-                           paste(duplicates, "doublon"),
-                           paste(duplicates, "doublons"))
+data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-effectifs-specialites-triplettes-1ere-generale/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B", ";")
 ```
 
 Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
 
-Il contient `r duplicates_label`.
 
-Il a été téléchargé *x* fois et a fait l'objet de ** appels API.
+
+
 
 ## Aperçu général
 
@@ -1189,13 +1105,13 @@ apercu_dfsummary(data)
 ```
 
 
-## Autres indicateurs de qualité
-
-### Longueur des champs 'description'
+## Histogramme de complétude
 
 ```{r}
-plot_description_lengths(data)
+histo_completude(data, 13, 35, "27_effectifs-premiere")
 ```
+
+
 
 
 <br>
@@ -1204,20 +1120,12 @@ plot_description_lengths(data)
 
 
 ```{r}
-data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-carte-scolaire-colleges-publics/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
-
-# Stats
-duplicates <- nrow(data) - n_distinct(data)
-duplicates_label <- ifelse(duplicates==0, 
-                           paste(duplicates, "doublon"),
-                           paste(duplicates, "doublons"))
+data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-carte-scolaire-colleges-publics/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B", ";")
 ```
 
 Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
 
-Il contient `r duplicates_label`.
 
-Il a été téléchargé *x* fois et a fait l'objet de ** appels API.
 
 ## Aperçu général
 
@@ -1226,13 +1134,13 @@ apercu_dfsummary(data)
 ```
 
 
-## Autres indicateurs de qualité
-
-### Longueur des champs 'description'
+## Histogramme de complétude
 
 ```{r}
-plot_description_lengths(data)
+histo_completude(data, 2, 10, "28_carte")
 ```
+
+
 
 
 <br>
@@ -1241,20 +1149,12 @@ plot_description_lengths(data)
 
 
 ```{r}
-data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-etablissements-labellises-euroscol/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
-
-# Stats
-duplicates <- nrow(data) - n_distinct(data)
-duplicates_label <- ifelse(duplicates==0, 
-                           paste(duplicates, "doublon"),
-                           paste(duplicates, "doublons"))
+data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-etablissements-labellises-euroscol/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B", ";")
 ```
 
 Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
 
-Il contient `r duplicates_label`.
 
-Il a été téléchargé *x* fois et a fait l'objet de ** appels API.
 
 ## Aperçu général
 
@@ -1263,13 +1163,13 @@ apercu_dfsummary(data)
 ```
 
 
-## Autres indicateurs de qualité
-
-### Longueur des champs 'description'
+## Histogramme de complétude
 
 ```{r}
-plot_description_lengths(data)
+histo_completude(data, 10, 15, "29_euroscol")
 ```
+
+
 
 
 <br>
@@ -1278,20 +1178,12 @@ plot_description_lengths(data)
 
 
 ```{r}
-data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-sections-sportives-scolaires/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B")
-
-# Stats
-duplicates <- nrow(data) - n_distinct(data)
-duplicates_label <- ifelse(duplicates==0, 
-                           paste(duplicates, "doublon"),
-                           paste(duplicates, "doublons"))
+data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-sections-sportives-scolaires/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B", ";")
 ```
 
 Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
 
-Il contient `r duplicates_label`.
 
-Il a été téléchargé *x* fois et a fait l'objet de ** appels API.
 
 ## Aperçu général
 
@@ -1300,13 +1192,13 @@ apercu_dfsummary(data)
 ```
 
 
-## Autres indicateurs de qualité
-
-### Longueur des champs 'description'
+## Histogramme de complétude
 
 ```{r}
-plot_description_lengths(data)
+histo_completude(data, 2, 10, "30_sections-sportives")
 ```
+
+
 
 
 
