@@ -227,8 +227,9 @@ histo_completude <- function(df, xlabel, ylabel, nom_export){
                   col = "#af1b76ff", fill = "#fbf4f8ff", label.size = NA, 
                fontface = "italic", hjust = 1, size = 4.5) +
     xlim(0, 106) +
+    labs(y = "Nombre de colonnes") +
     theme_classic() +
-    theme(axis.title.y = element_blank(),
+    theme(axis.title.y = element_text(size = 11, colour = "#3d3d3d"),
           axis.title.x = element_text(size = 14, colour = "#3d3d3d"),
           axis.ticks.y = element_blank(),
           axis.ticks.x = element_line(colour = "#3d3d3d"),
@@ -243,7 +244,9 @@ histo_completude <- function(df, xlabel, ylabel, nom_export){
          plot = hist, width = 4, height = 2)
   hist
 }
-histo_completude(data, 2, 15, "1_annuaire")
+histo_completude(data, 2, 15, "1_annuaire")# |> 
+  #theme(plot.background = element_rect(fill = "white", colour = "white"),
+        #panel.background = element_rect(fill = "white", colour = "white"))
 ```
 
 
@@ -610,6 +613,17 @@ data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/data
 
 Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
 
+```{r}
+#| eval: false
+#| include: false
+# Exploration des données pour l'audit qualitatif
+test <- data |> 
+  mutate(taux = round(`Nombre d'admis à l'examen` / `Nombre de présents à l'examen` * 100, 1), 
+         is_same = ifelse(taux == `Taux de réussite à l'examen`, 1, 0))
+tabyl(test$is_same)
+test <- tabyl(data$`Libellé département`)
+test <- tabyl(data$`Libellé académie`)
+```
 
 
 ## Aperçu général
@@ -640,6 +654,24 @@ data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/data
 
 Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
 
+```{r}
+#| eval: false
+#| include: false
+# Exploration des données pour l'audit qualitatif
+library(janitor)
+tabyl(data$Année)
+tabyl(data$`Origine sociale`)
+test <- data |> 
+  filter(`Origine sociale` != "Ensemble") |> 
+  group_by(Année) |> 
+  group_modify(~ adorn_totals(.x, where = "row")) |> 
+  ungroup() |> 
+  arrange(fct_relevel(`Origine sociale`, 'Total')) |> 
+  filter(`Origine sociale` == "Total")
+test2 <- test |> 
+  bind_rows(data |> filter(`Origine sociale` == "Ensemble")) |> 
+  arrange(Année)
+```
 
 
 ## Aperçu général
