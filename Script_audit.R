@@ -46,24 +46,24 @@ sub_cat <- catalogue_stat |>
   mutate(nb_keyword = str_count(keyword, ",") + 1, .after = keyword)
 
 # Mot description
-str_count("Ce jeu de données contient les résultats au baccalauréat par origine sociale et par voie du baccalauréat.  Le baccalauréat est un diplôme national qui sanctionne la fin des études secondaires générale, technologique ou professionnelle. 
-
-Ce jeu de données regroupe l'ensemble des candidats au baccalauréat des sessions de juin et de septembre, quels que soient leur origine scolaire (candidats individuels compris) et le ministère délivrant le diplôme (éducation nationale ou agriculture). 
-
-La date d'observation est définie au 30 juin de chaque année même si la date des épreuves varie d'une année à l'autre. 
-
-Dernière observation : Session 2025 du baccalauréat 
-
-Pour en savoir plus :
-
-Thomas F., 2026, « Résultats définitifs du baccalauréat 2025 : moins de bacheliers dans les voies générale et technologique, plus dans la voie professionnelle », Note d'Information, n° 26-05, DEPP. 
-
-Thomas F., 2025, Résultats définitifs de la session 2024 du baccalauréat : un taux de réussite en hausse dans chacune des voies, Note d'Information, n° 25-05, DEPP. 
-https://doi.org/10.48464/ni-25-05 
-
-Thomas F., 2024,Résultats définitifs de la session 2023 du baccalauréat : stabilisation des résultats après la crise sanitaire et la mise en place du nouveau baccalauréat général, Note d'Information, n° 24.07, DEPP.  
-https://doi.org/10.48464/ni-24-07
-
-Série chronologique : La réussite au baccalauréat", " ") + 1
+str_count("Listes des sections sportives scolaires implantées dans les établissements du 2nd degré à la rentrée scolaire 2025.", " ") + 1
 
 
+# Catalogue pour les 30 JDD sélectionnés
+jdd30 <- catalogue_stat |> 
+  filter(dataset_id %in% c("fr-en-annuaire-education","fr-en-adresse-et-geolocalisation-etablissements-premier-et-second-degre","fr-en-etablissements-fermes","fr-en-ecoles-effectifs-nb_classes","fr-en-college-effectifs-niveau-sexe-lv","fr-en-lycee_gt-effectifs-niveau-sexe-lv","fr-en-lycee_pro-effectifs-niveau-sexe-lv","fr-en-lycee_pro-effectifs-niveau-sexe-mef","fr-en-mode-hebergement-eleves-etablissements-2d","fr-en-baccalaureat-par-academie","fr-en-baccalaureat-par-departement","fr-en-reussite-au-baccalaureat-origine-sociale","fr-en-proportion-de-bacheliers-dans-une-generation","fr-en-dnb-par-departement","fr-en-resultats-detailles-au-dnb","fr-en-cap-par-departement","fr-en-cap_specialite_sexe_statut_departement","fr-en-indicateur_segregation_sociale_colleges","fr-en-moyens_enseignants_2d_public","fr-en-moyens_enseignants_2d_prive","fr-en-offre-langues-2d","fr-en-sections-internationales","fr-en-pix_resultats_des_campagnes_de_rentree_par_eple","fr-en-effectifs-specialites-triplettes-1ere-generale","fr-en-carte-scolaire-colleges-publics","fr-en-etablissements-labellises-euroscol","fr-en-sections-sportives-scolaires","fr-en-dnma-par-uai-profils","fr-en-dnma-par-uai-services","fr-en-dnma-par-uai-appareils"))
+
+tabyl(jdd30$domain_id)
+tabyl(jdd30$publisher)
+tabyl(jdd30$license)
+library(stringr)
+test <- jdd30 |> 
+  mutate(theme2 = str_replace_all(theme, 
+                             c(",Etablissements" = ";Etablissements",
+                               ",Organisation" = ";Organisation",
+                               ",Sport" = ";Sport",
+                               ",Politique" = ";Politique",
+                               ",Diplômes" = ";Diplômes"))) |> 
+  mutate(theme2 = strsplit(as.character(theme2), ";")) |> 
+  unnest(theme2) |> 
+  tabyl(theme2)

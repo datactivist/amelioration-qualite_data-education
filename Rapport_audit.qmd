@@ -42,7 +42,7 @@ execute:
 #| label: logo
 
 # Logo haut de page
-htmltools::img(src = "figures/logos.png", 
+htmltools::img(src = "files/logos.png", 
                alt = 'logo', 
                style = 'position:absolute; top:0; left:0.4; padding-top:200px;') #padding=taille des espaces autour
 ```
@@ -219,7 +219,7 @@ histo_completude <- function(df, xlabel, ylabel, nom_export){
   hist <- nb_NA |> 
     ggplot() +
     geom_histogram(aes(x = `% de la colonne renseignée`), 
-                   fill = "#9E9E9E", col = "white", bins = 10) +
+                   fill = "#9E9E9E", bins = 10) +
     geom_vline(xintercept = mean(nb_NA$`% de la colonne renseignée`, na.rm = TRUE), 
                linetype = 2, size = 1.5, col = "#af1b76ff") +
     geom_label(aes(x = mean(`% de la colonne renseignée`, na.rm = T) - xlabel, y = ylabel, 
@@ -240,7 +240,7 @@ histo_completude <- function(df, xlabel, ylabel, nom_export){
           panel.background = element_rect(fill = "#fbf4f8ff", colour = "#fbf4f8ff"))
   
   # Export
-  ggsave(file = paste0("./figures/histo_completude/hist", nom_export, ".png"), 
+  ggsave(file = paste0("./files/histo_completude/hist", nom_export, ".png"), 
          plot = hist, width = 4, height = 2)
   hist
 }
@@ -346,7 +346,7 @@ Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes e
 #| include: false
 # Exploration des données pour l'audit qualitatif
 n_distinct(data$`Numéro de l'école`)
-tabyl(data$`Dénomination principale`) |> arrange(desc(n))
+test <- tabyl(data$`Dénomination principale`) |> arrange(desc(n))
 test <- data |> 
   select(`Nombre total d'élèves`:`Nombre d'élèves en CM2 hors ULIS`) |> 
   rowwise() |> 
@@ -693,7 +693,7 @@ histo_completude(data, 13, 7, "12_reussite-origine")
 
 <br>
 
-# Proportion de bacheliers dans une génération
+# La proportion de bacheliers dans une génération
 
 
 ```{r}
@@ -702,6 +702,22 @@ data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/data
 
 Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
 
+```{r}
+#| eval: false
+#| include: false
+# Exploration des données pour l'audit qualitatif
+data |> 
+  mutate(n = n(), .by = Année) |>
+  arrange(desc(n)) |> 
+  tabyl(n)
+data |> 
+  filter(Série == "Bac professionnel") |> 
+  filter(Année == min(Année))
+n_distinct(data$Année)
+summary(data$`Pourcentage de garçons bacheliers dans une génération`)
+summary(data$`Pourcentage de filles bachelières dans une génération`)
+summary(data$`Pourcentage de bacheliers dans une génération`)
+```
 
 
 ## Aperçu général
@@ -722,7 +738,7 @@ histo_completude(data, 2, 3, "13_proportion")
 
 <br>
 
-# Diplôme national du brevet par département, série et sexe
+# Candidats au DNB par département, série et sexe
 
 
 ```{r}
@@ -731,6 +747,17 @@ data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/data
 
 Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
 
+```{r}
+#| eval: false
+#| include: false
+# Exploration des données pour l'audit qualitatif
+test <- data |> 
+  mutate(part_recus = round(Admis / Présents * 100, 1)) |> 
+  filter(part_recus != `Taux de réussite`)
+65/80
+299/368
+tabyl(data$Année)
+```
 
 
 ## Aperçu général
@@ -759,7 +786,14 @@ data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/data
 
 Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
 
-
+```{r}
+#| eval: false
+#| include: false
+# Exploration des données pour l'audit qualitatif
+test <- data |> 
+  filter_at(vars(ends_with("filles")), is.na)
+test <- tabyl(data$`Libellé département`)
+```
 
 ## Aperçu général
 
@@ -788,6 +822,21 @@ data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/data
 
 Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
 
+```{r}
+#| eval: false
+#| include: false
+# Exploration des données pour l'audit qualitatif
+data |> select(-num_ligne) |> distinct() |> nrow()
+test <- data |> 
+  select(-num_ligne) |>
+  mutate(n = n(), .by = everything()) |>
+  arrange(desc(n))
+data |> 
+  mutate(taux = round(Admis / Présents * 100, 1)) |> 
+  filter(`Taux de réussite` != taux) #même chose, c'est juste l'arrondi à 0,5 qui est fait à la baisse en R et à la hausse par la DEPP
+table(data$Département, data$Année)
+
+```
 
 
 ## Aperçu général
@@ -817,7 +866,21 @@ data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/data
 
 Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
 
-
+```{r}
+#| eval: false
+#| include: false
+# Exploration des données pour l'audit qualitatif
+test <- data |> 
+  tabyl(Spécialité)
+test <- data |> 
+  tabyl(Statut)
+tabyl(data$Année)
+data |> 
+  mutate(Admis = as.numeric(str_replace(Admis, "n.s", NA_character_)),
+         Présents = as.numeric(str_replace(Présents, "n.s", NA_character_)),
+         taux = round(Admis / Présents * 100, 1)) |> 
+  filter(`Taux de réussite` != taux) 
+```
 
 ## Aperçu général
 
@@ -846,7 +909,20 @@ data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/data
 
 Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
 
-
+```{r}
+#| eval: false
+#| include: false
+# Exploration des données pour l'audit qualitatif
+data |> 
+  mutate(tot = nb_coll_PU_calcul+nb_coll_PR_calcul) |> 
+  filter(tot != nb_coll_calcul)
+data |> 
+  mutate(tot = p_tfav+p_fav+p_moy+p_defav) |> 
+  filter(tot <= 99.9 & tot >= 100.1)
+data |> 
+  mutate(tot = contrib_pu+contrib_pr+contrib_interPUPR) |> 
+  filter(tot <= 99.9 & tot >= 100.1)
+```
 
 ## Aperçu général
 
@@ -875,7 +951,20 @@ data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/data
 
 Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
 
-
+```{r}
+#| eval: false
+#| include: false
+# Exploration des données pour l'audit qualitatif
+test <- data |> 
+  tabyl(Niveau) |> 
+  desc(n) #3lignes pour Total Académie NORMANDIE
+data |> 
+  filter(`Numérateur H/E : nombre d’heures d’enseignement hebdomadaire devant élèves.` != "ns") |> 
+  mutate(tot = as.numeric(`Numérateur H/E : nombre d’heures d’enseignement hebdomadaire devant élèves.`) / as.numeric(`Dénominateur H/E : somme des élèves en division.`)) |> 
+  filter(round(tot, 2) != `H/E`)
+test <- data |> 
+  tabyl(`H/E`)
+```
 
 ## Aperçu général
 
@@ -902,7 +991,21 @@ data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/data
 
 Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
 
-
+```{r}
+#| eval: false
+#| include: false
+# Exploration des données pour l'audit qualitatif
+test <- data |> 
+  tabyl(Niveau) #1 ligne pour Prépa seconde
+data |> 
+  filter(`Numérateur H/E: nombre d’heures d’enseignement hebdomadaire devant élèves.` != "ns") |> 
+  mutate(tot = as.numeric(`Numérateur H/E: nombre d’heures d’enseignement hebdomadaire devant élèves.`) / as.numeric(`Dénominateur H/E: somme des élèves en division.`)) |> 
+  filter(round(tot, 2) != `H/E`)
+data |> 
+  filter(`Numérateur E/S: nombre d’élèves d’une structure pondéré par le nombre d’heures d’enseignement dans cette structure` != "ns") |> 
+  mutate(tot = as.numeric(`Numérateur E/S: nombre d’élèves d’une structure pondéré par le nombre d’heures d’enseignement dans cette structure`) / as.numeric(`Dénominateur E/S: nombre d’heures d’enseignement hebdomadaire devant élèves.`)) |> 
+  filter(round(tot, 2) != `E/S`)
+```
 
 ## Aperçu général
 
@@ -931,7 +1034,15 @@ data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/data
 
 Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
 
-
+```{r}
+#| eval: false
+#| include: false
+# Exploration des données pour l'audit qualitatif
+test <- data |> 
+  tabyl(Langues)
+test <- data |> 
+  filter(!is.na(Département) & is.na(`Code departement`))
+```
 
 ## Aperçu général
 
@@ -960,7 +1071,17 @@ data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/data
 
 Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
 
-
+```{r}
+#| eval: false
+#| include: false
+# Exploration des données pour l'audit qualitatif
+test <- data |> 
+  tabyl(Academie)
+test <- data |> 
+  tabyl(Section)
+test <- data |> 
+  filter(!is.na(Département) & is.na(`Code departement`))
+```
 
 ## Aperçu général
 
@@ -1000,9 +1121,15 @@ Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes e
 ```{r}
 #| eval: false
 #| include: false
-apercu_dfsummary(data)
+#| label: prerun dfsummary profils
+res <- dfSummary(data, plain.ascii = FALSE, max.distinct.values = 5)
+saveRDS(res, "files/prerun_dfsummary_DNMA/dfsummary_DNMA-profils.rds")
 ```
 
+```{r}
+res <- readRDS("files/prerun_dfsummary_DNMA/dfsummary_DNMA-profils.rds")
+print(res, method = "render", max.tbl.height = 600)
+```
 
 ## Histogramme de complétude
 
@@ -1012,6 +1139,7 @@ apercu_dfsummary(data)
 histo_completude(data, 10, 15, "23_DNMA-profils")
 ```
 
+![](files/histo_completude/hist23_DNMA-profils.png)
 
 <br>
 
@@ -1035,7 +1163,14 @@ Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes e
 ```{r}
 #| eval: false
 #| include: false
-apercu_dfsummary(data)
+#| label: prerun dfsummary services
+res <- dfSummary(data, plain.ascii = FALSE, max.distinct.values = 5)
+saveRDS(res, "files/prerun_dfsummary_DNMA/dfsummary_DNMA-services.rds")
+```
+
+```{r}
+res <- readRDS("files/prerun_dfsummary_DNMA/dfsummary_DNMA-services.rds")
+print(res, method = "render", max.tbl.height = 600)
 ```
 
 
@@ -1047,7 +1182,7 @@ apercu_dfsummary(data)
 histo_completude(data, 13, 40, "24_DNMA-services")
 ```
 
-
+![](files/histo_completude/hist24_DNMA-services.png)
 
 <br>
 
@@ -1071,7 +1206,14 @@ Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes e
 ```{r}
 #| eval: false
 #| include: false
-apercu_dfsummary(data)
+#| label: prerun dfsummary appareils
+res <- dfSummary(data, plain.ascii = FALSE, max.distinct.values = 5)
+saveRDS(res, "files/prerun_dfsummary_DNMA/dfsummary_DNMA-appareils.rds")
+```
+
+```{r}
+res <- readRDS("files/prerun_dfsummary_DNMA/dfsummary_DNMA-appareils.rds")
+print(res, method = "render", max.tbl.height = 600)
 ```
 
 
@@ -1083,7 +1225,7 @@ apercu_dfsummary(data)
 histo_completude(data, 13, 40, "25_DNMA-appareils")
 ```
 
-
+![](files/histo_completude/hist25_DNMA-appareils.png)
 
 
 <br>
@@ -1097,7 +1239,18 @@ data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/data
 
 Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
 
-
+```{r}
+#| eval: false
+#| include: false
+# Exploration des données pour l'audit qualitatif
+test <- data |> 
+  filter(total_participants < total_envoi_par_niveau)
+data |> 
+  filter(total_participants >= total_envoi_par_niveau) |> 
+  nrow()
+tabyl(test$annee)
+tabyl(data$niveau_scolaire)
+```
 
 ## Aperçu général
 
@@ -1127,7 +1280,17 @@ data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/data
 Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
 
 
+```{r}
+#| eval: false
+#| include: false
+# Exploration des données pour l'audit qualitatif
 
+test <- data |> 
+  tabyl(`DENOMINATION PRINCIPALE`)
+data |> 
+  mutate(tot = `EFFECTIF TOTAL FILLES` + `EFFECTIF TOTAL GARCONS`) |> 
+  filter(tot != `EFFECTIF TOTAL`)
+```
 
 
 ## Aperçu général
@@ -1157,7 +1320,27 @@ data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/data
 
 Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
 
+```{r}
+#| eval: false
+#| include: false
+# Exploration des données pour l'audit qualitatif
 
+test <- data |> 
+  filter_out(parite %in% c("P", "I", "PI")) |> 
+  filter(!is.na(parite))
+data |> 
+  select(-no_ligne) |> 
+  distinct() |> 
+  nrow()
+data |> 
+  filter(secteur_unique == "N" & is.na(No_de_voie_debut) & is.na(No_de_voie_fin)) |> 
+  nrow()
+data |> 
+  filter(secteur_unique == "0" & !is.na(lieu_dit) & !is.na(type_et_libelle) & !is.na(No_de_voie_debut) & !is.na(No_de_voie_fin)) |> 
+  nrow()
+test <- data |> 
+  tabyl(code_rne)
+```
 
 ## Aperçu général
 
@@ -1186,7 +1369,33 @@ data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/data
 
 Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
 
+```{r}
+#| eval: false
+#| include: false
+# Exploration des données pour l'audit qualitatif
 
+test <- data |> 
+  filter(REP_plus == 1 & REP == 0)
+tabyl(data$Niveau_etablissement)
+tabyl(data$Niveau_etablissement_simplifie)
+n_distinct(data$RNE)
+
+# Nb digits num tel
+test <- data |> 
+  select(telephone) |> 
+  mutate(nb_digits = str_count(telephone, "\\d")) |> 
+  tabyl(nb_digits)
+test <- data |> 
+  select(telephone) |> 
+  mutate(nb_space = str_count(telephone, " ")) |> 
+  tabyl(nb_space)
+
+# Vérif mails
+test <- data |> 
+  distinct(mail) |> 
+  mutate(valide = str_detect(mail, "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"))
+tabyl(test$valide)
+```
 
 ## Aperçu général
 
@@ -1215,7 +1424,13 @@ data <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/data
 
 Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
 
-
+```{r}
+#| eval: false
+#| include: false
+# Exploration des données pour l'audit qualitatif
+test <- data |> 
+  tabyl(`Sections scolaires`)
+```
 
 ## Aperçu général
 
