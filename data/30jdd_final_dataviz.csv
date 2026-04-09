@@ -1,0 +1,31 @@
+﻿dataset_id,title,publisher,API call count,Download count,nb_reco
+fr-en-offre-langues-2d,Offre de langues dans les collèges et lycées,DNE - Ministère de l'Education Nationale,881030,6039,4
+fr-en-effectifs-specialites-triplettes-1ere-generale,Effectifs dans les enseignements de spécialités en Première générale,DEPP – Ministère en charge de l’éducation nationale,898214,13952,5
+fr-en-moyens_enseignants_2d_public,Indicateurs d'encadrement H/E et E/S à la rentrée dans le secteur public,DEPP – Ministère en charge de l’éducation nationale,20491,2962,7
+fr-en-baccalaureat-par-academie,Le baccalauréat par académie,DEPP – Ministère en charge de l’éducation nationale,146470,24593,4
+fr-en-dnma-par-uai-profils,DNMA - Métriques par UAI croisées par les profils,DNE - Ministère de l'Education Nationale,83234,5314,5
+fr-en-adresse-et-geolocalisation-etablissements-premier-et-second-degre,Adresse et géolocalisation des établissements d'enseignement des premier et second degrés,DEPP – Ministère en charge de l’éducation nationale,21895302,323887,5
+fr-en-cap-par-departement,Candidat au CAP par département et sexe,DEPP – Ministère en charge de l’éducation nationale,6141,1531,4
+fr-en-lycee_gt-effectifs-niveau-sexe-lv,Effectifs d’élèves en lycée d'enseignement général et technologique,DEPP – Ministère en charge de l’éducation nationale,497629,33279,6
+fr-en-cap_specialite_sexe_statut_departement,"Résultats par spécialité, sexe, statut et département au CAP",DEPP – Ministère en charge de l’éducation nationale,7593,1351,4
+fr-en-proportion-de-bacheliers-dans-une-generation,La proportion de bacheliers dans une génération,DEPP – Ministère en charge de l’éducation nationale,459095,9208,5
+fr-en-sections-internationales,Sections internationales et classes menant au baccalauréat français international (BFI) en France et dans les établissements français à l’étranger,DREIC - Ministère de l'éducation nationale,889854,8794,6
+fr-en-lycee_pro-effectifs-niveau-sexe-lv,Effectifs d’élèves en lycée professionnel,DEPP – Ministère en charge de l’éducation nationale,297793,16269,7
+fr-en-moyens_enseignants_2d_prive,Indicateurs d'encadrement H/E et E/S à la rentrée dans le secteur privé sous contrat,DEPP – Ministère en charge de l’éducation nationale,12830,2593,6
+fr-en-mode-hebergement-eleves-etablissements-2d,Le mode d’hébergement des élèves dans les établissements du second degré,DEPP – Ministère en charge de l’éducation nationale,107387,6373,5
+fr-en-reussite-au-baccalaureat-origine-sociale,Réussite au baccalauréat selon l’origine sociale,DEPP – Ministère en charge de l’éducation nationale,288151,30059,3
+fr-en-resultats-detailles-au-dnb,Résultats détaillés au DNB,DEPP – Ministère en charge de l’éducation nationale,1408822,91374,6
+fr-en-dnb-par-departement,"Candidats au DNB par département, série et sexe",DEPP – Ministère en charge de l’éducation nationale,30520,1938,3
+fr-en-dnma-par-uai-services,DNMA - Métriques par UAI croisées par les services,DNE - Ministère de l'Education Nationale,19850,4726,6
+fr-en-carte-scolaire-colleges-publics,Carte scolaire des collèges publics,DGESCO - Ministère de l'éducation nationale,3217682,21754,7
+fr-en-etablissements-labellises-euroscol,Établissements labellisés Euroscol,DREIC - Ministère de l'éducation nationale,2414399,11572,4
+fr-en-ecoles-effectifs-nb_classes,Effectifs d’élèves par école,DEPP – Ministère en charge de l’éducation nationale,1420434,52945,5
+fr-en-college-effectifs-niveau-sexe-lv,Effectifs d’élèves en collège,DEPP – Ministère en charge de l’éducation nationale,1142302,30399,6
+fr-en-indicateur_segregation_sociale_colleges,Indicateurs de ségrégation sociale entre collèges dans les départements,DEPP – Ministère en charge de l’éducation nationale,568629,6530,4
+fr-en-sections-sportives-scolaires,Sections Sportives Scolaires,DGESCO - Ministère de l'éducation nationale,18263,606,5
+fr-en-dnma-par-uai-appareils,"DNMA - Métriques par UAI croisées par les appareils (types d'appareils, navigateurs, systèmes d'exploitation)",DNE - Ministère de l'Education Nationale,41674,4364,5
+fr-en-lycee_pro-effectifs-niveau-sexe-mef,Effectifs des élèves en voie professionnelle ou BTS,DEPP – Ministère en charge de l’éducation nationale,208720,8215,4
+fr-en-pix_resultats_des_campagnes_de_rentree_par_eple,Pix - Résultats par palier des parcours de rentrée pour les élèves des collèges et lycées,Groupement d’intérêt public « Pix »,102493,5568,4
+fr-en-baccalaureat-par-departement,Réussite au baccalauréat par département,DEPP – Ministère en charge de l’éducation nationale,486921,2854,4
+fr-en-etablissements-fermes,Établissements fermés,DEPP – Ministère en charge de l’éducation nationale,2407030,34844,5
+fr-en-annuaire-education,Annuaire de l'éducation,DNE - Ministère de l'Education Nationale,65534258,395549,6

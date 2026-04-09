@@ -1,0 +1,31 @@
+dataset_id,title,modified,API call count,Download count,score
+fr-en-calendrier-scolaire,Le calendrier scolaire,2026-01-29,161887710,7280379,169168089
+fr-en-annuaire-education,Annuaire de l'éducation,2026-02-14,61589388,366188,61955576
+fr-en-adresse-et-geolocalisation-etablissements-premier-et-second-degre,Adresse et géolocalisation des établissements d'enseignement des premier et second degrés,2026-02-14,21054269,309153,21363422
+fr-en-etablissements-labellises-generation-2024,"Établissements labellisés ""génération 2024""",2026-02-02,6436392,19948,6456340
+fr-en-reussite-au-baccalaureat-age,Réussite au baccalauréat selon l'âge,2026-02-06,3943306,180621,4123927
+fr-en-ips-ecoles-ap2022,Indices de position sociale des écoles (à partir de 2022),2026-02-06,4032722,70912,4103634
+fr-en-etablissements-ep,Etablissements de l'éducation prioritaire,2026-02-02,3993218,26318,4019536
+fr-en-annuaire_bde_lycees_pro,Annuaire des bureaux des entreprises des lycées professionnels et polyvalents,2026-02-10,3218082,7651,3225733
+fr-en-carte-scolaire-colleges-publics,Carte scolaire des collèges publics,2026-02-02,3041694,20594,3062288
+fr-en-ips_colleges,Indices de position sociale des collèges (2016-2021),2026-02-06,2788462,36379,2824841
+fr-en-etablissements-labellises-euroscol,Établissements labellisés Euroscol,2026-02-02,2400052,11117,2411169
+fr-en-etablissements-fermes,Établissements fermés,2026-02-14,2374643,31854,2406497
+fr-en-dnb-par-etablissement,Diplôme national du brevet par établissement,2026-02-06,2209410,47864,2257274
+lycees_prefigurateurs_prepa2nde,Lycées avec classes préparatoires à la classe de seconde,2026-01-29,2009276,6325,2015601
+fr-en-resultats-detailles-au-dnb,Résultats détaillés au DNB,2026-02-10,1338361,89912,1428273
+fr-en-ips-colleges-ap2023,Indices de position sociale des collèges (à partir de 2023),2026-02-06,1240563,20548,1261111
+fr-en-ecoles-effectifs-nb_classes,Effectifs d’élèves par école,2026-02-06,1192998,49565,1242563
+fr-en-cefte,Campus professionnel franco-étranger (CPFx) (ex Centres d'excellence de formation technique à l'étranger (CEFTE)),2026-01-29,1137875,9035,1146910
+fr-en-indicateurs-de-resultat-des-lycees-denseignement-general-et-technologique,Indicateurs de valeur ajoutée des lycées d'enseignement général et technologique (ancien),2026-02-10,950638,42085,992723
+sections-sportives-scolaires,Sections Sportives Scolaires,2026-02-02,914733,9129,923862
+fr-en-college-effectifs-niveau-sexe-lv,Effectifs d’élèves en collège,2026-02-06,858920,26961,885881
+fr-en-sections-internationales,Sections internationales et classes menant au baccalauréat français international (BFI) en France et dans les établissements français à l’étranger,2026-02-02,847373,8372,855745
+fr-en-effectifs-specialites-triplettes-1ere-generale,Effectifs dans les enseignements de spécialités en Première générale,2026-02-06,779584,13295,792879
+fr-en-effectifs-specialites-doublettes-terminale-generale,Effectifs dans les enseignements de spécialités en Terminale générale,2026-02-06,768723,12301,781024
+fr-en-agenda-ministre-education-nationale,Agenda du ministre de l’Éducation Nationale,2026-02-14,580794,119621,700415
+fr-en-offre-langues-2d,Offre de langues dans les collèges et lycées,2026-01-31,656532,5174,661706
+fr-en-cnr-base-nefle,Ecoles et établissements engagés dans la démarche du CNR Education,2026-01-29,643148,5081,648229
+fr-en-ips-lycees-ap2023,Indices de position sociale des lycées (à partir de 2023),2026-02-06,572276,15178,587454
+fr-en-label-egalite-fille-garcon,Label Egalité Filles-Garçons,2026-01-29,565219,2291,567510
+fr-en-liste-diplomes-professionnels,Liste des diplômes professionnels de l’éducation nationale,2026-02-05,534804,13102,547906

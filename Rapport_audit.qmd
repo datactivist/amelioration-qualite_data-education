@@ -1114,7 +1114,38 @@ data <- vroom::vroom("data.csv", delim = ";")
 
 Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
 
+```{r}
+#| eval: false
+#| include: false
 
+# Exploration des données pour l'audit qualitatif
+test <- data |> 
+  select(visites_globales, visites_eleve, visites_parent, visites_admin_vie_scol_tech, visites_enseignant) |> 
+  mutate(tot = visites_eleve + visites_parent + visites_admin_vie_scol_tech + visites_enseignant) |> 
+  filter(tot != visites_globales)
+nrow(test)/nrow(data)*100
+
+test <- data |> 
+  select(utilisateurs_globales, utilisateurs_eleve, utilisateurs_parent, utilisateurs_admin_vie_scol_tech, utilisateurs_enseignant) |> 
+  mutate(tot = utilisateurs_eleve + utilisateurs_parent + utilisateurs_admin_vie_scol_tech + utilisateurs_enseignant) |> 
+  filter(tot != utilisateurs_globales)
+nrow(test)/nrow(data)*100
+
+test <- data |> 
+  filter(is.na(circonscription))
+tabyl(test$nature_uai)
+test <- tabyl(data$nature_uai)
+
+test <- data |> 
+  select(starts_with("duree_"))
+test <- tabyl(data$nature_uai)
+
+test <- data |> 
+  select(debutSemaine)
+tabyl(test$debutSemaine)
+
+data |> distinct(debutSemaine, UAI) |> 
+```
 
 ## Aperçu général
 
@@ -1156,7 +1187,21 @@ data <- vroom::vroom("data.csv", delim = ";")
 
 Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
 
+```{r}
+#| eval: false
+#| include: false
 
+# Exploration des données pour l'audit qualitatif
+test <- data |> 
+  select(starts_with("duree_"))
+test <- tabyl(data$nature_uai)
+
+test <- data |> 
+  select(debutSemaine)
+tabyl(test$debutSemaine)
+
+data |> distinct(debutSemaine, UAI) |> nrow()
+```
 
 ## Aperçu général
 
@@ -1199,7 +1244,21 @@ data <- vroom::vroom("data.csv", delim = ";")
 
 Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes et `r ncol(data)` colonnes. 
 
+```{r}
+#| eval: false
+#| include: false
 
+# Exploration des données pour l'audit qualitatif
+test <- data |> 
+  select(starts_with("duree_"))
+test <- tabyl(data$nature_uai)
+
+test <- data |> 
+  select(debutSemaine)
+tabyl(test$debutSemaine)
+
+data |> distinct(debutSemaine, UAI) |> nrow()
+```
 
 ## Aperçu général
 
@@ -1430,6 +1489,28 @@ Ce jeu se compose de `r format(nrow(data), nsmall = 1, big.mark = ".")` lignes e
 # Exploration des données pour l'audit qualitatif
 test <- data |> 
   tabyl(`Sections scolaires`)
+data |> 
+  filter(grepl(",", `Sections scolaires`) == TRUE) |> 
+  nrow()
+data |> distinct() |> nrow()
+
+# Nb digits num tel
+data |> 
+  select(Téléphone) |> 
+  mutate(nb_digits = str_count(Téléphone, "\\d")) |> 
+  tabyl(nb_digits)
+data |> 
+  select(Téléphone) |> 
+  mutate(nb_space = str_count(Téléphone, " ")) |> 
+  tabyl(nb_space)
+
+# Vérif mails
+test <- data |> 
+  distinct(Courriel) |> 
+  mutate(valide = str_detect(Courriel, "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"))
+tabyl(test$valide)
+
+tabyl(data$Académie)
 ```
 
 ## Aperçu général
@@ -1446,6 +1527,56 @@ histo_completude(data, 2, 10, "30_sections-sportives")
 ```
 
 
+<br>
+
+# Visualisation récapitulative
+
+```{r}
+# Dataviz finale
+data_final_dataviz <- read_csv("data/30jdd_final_dataviz.csv") |> 
+  mutate(publisher = ifelse(publisher != "Groupement d’intérêt public « Pix »", 
+                            str_extract(publisher, "^.*?(?=\\s[-–]\\s)"), 
+                            publisher))
+
+library(ggforce)
+library(ggiraph)
+final_viz <- data_final_dataviz |> 
+  ggplot() +
+  geom_point_interactive(aes(x = `Download count`, y = nb_reco, color = `publisher`,
+                             tooltip = paste0(title, "\n", nb_reco, " recommandations et ", 
+                                              `Download count`, " téléchargements")), 
+                         size = 2) +
+  labs(title = "Des améliorations à fort impact potentiel : les données les plus \ntéléchargées cumulent jusqu'à 6 recommandations", 
+       subtitle = "Nombre de recommandations croisé au nombre de téléchargements des 30 jeux de données audités",
+       x = "Nombre de téléchargements", y = "Nombre de recommandations identifiées") +
+  scale_x_continuous(labels = scales::comma) +
+  scale_color_manual(values = c("DNE" = "#411F6B",
+                                "DGESCO" = "#b85ee5",
+                                "DEPP" = "#af1b76",
+                                "DREIC" = "#DB928A",
+                                "Groupement d’intérêt public « Pix »" = "#f4d9ba")) +
+  facet_zoom(x = `Download count` < 50000, split = TRUE) +
+  guides(color = guide_legend(title = "Producteur", nrow = 2)) +
+  theme_classic() +
+  theme(legend.position = "top",
+        legend.background = element_rect(fill="transparent", color=NA),
+        plot.title = ggplot2::element_text(size = 15, face = "bold", color = "#222222"), 
+        plot.subtitle = ggplot2::element_text(face = "italic", color = "#222222"), 
+        axis.text = ggplot2::element_text(size = 9, color = "#222222"), 
+        axis.text.x = ggplot2::element_text(margin = ggplot2::margin(5,b = 10)), 
+        axis.title = ggplot2::element_text(size = 11, color = "#222222"),
+        strip.background = element_rect(fill = "grey", colour = "#999999", linetype = 2),
+        panel.grid.minor = ggplot2::element_line(color = "#cbcbcb"),
+        panel.grid.major.y = ggplot2::element_line(color = "#cbcbcb"),
+        panel.grid.major.x = ggplot2::element_line(color = "#cbcbcb"),
+        strip.text = ggplot2::element_text(size = 22, hjust = 0, face = "bold"),
+        text = element_text(family = "Open Sans"),
+        panel.background = element_rect(fill="transparent", color=NA),
+        plot.background = element_rect(fill="transparent", color=NA))
+#ggsave(file = "files/dataviz_finale_audit.png", plot = final_viz, width = 8, height = 6, bg="transparent")
+
+girafe(print(final_viz), width_svg = 8, height_svg = 6)
+```
 
 
 
