@@ -355,6 +355,53 @@ test <- data |>
   #select(mon_total, `Nombre total d'élèves`) |> 
   mutate(different1 = ifelse(mon_total1 != `Nombre total d'élèves`, 1, 0),
          different2 = ifelse(mon_total2 != `Nombre total d'élèves`, 1, 0))
+
+
+
+#--- Extraction nom du patronyme pour dataviz atelier 16/04/26
+test <- data |> 
+  #filter(`Région académique` == "AUVERGNE-RHONE-ALPES") |> 
+  distinct(Patronyme) |> 
+  mutate(patronyme_prepare = str_remove_all(Patronyme, "ECOLE|ÉCOLE|GROUPE SCOLAIRE|INSTITUTION|INSTITUTION|CENTRE|PRIMAIRE|PRIMARE|MATERNELLE|ÉLÉMENTAIRE|ELEMENTAIRE|-"),
+         patronyme_prepare = trimws(patronyme_prepare, which = "left"))
+rio::export(test, "data/patronymes_prepares_aura.csv")
+rio::export(test |> filter(row_number() < 100), "data/patronymes_prepares_100l.csv")
+rio::export(test |> filter(row_number() < 10), "data/patronymes_prepares_10l.csv")
+
+
+# Extraction sur tout le df pour compte du nombre de lignes
+test <- data |> 
+  select(Patronyme) |> 
+  mutate(patronyme_prepare = str_remove_all(Patronyme, "ECOLE|ÉCOLE|GROUPE SCOLAIRE|INSTITUTION|INSTITUTION|CENTRE|PRIMAIRE|PRIMARE|MATERNELLE|ÉLÉMENTAIRE|ELEMENTAIRE|-"),
+         patronyme_prepare = trimws(patronyme_prepare, which = "left")) |> 
+  filter(!is.na(patronyme_prepare), patronyme_prepare != "") |> 
+  nrow()
+
+
+#--- Tests appel base wiki data pour match du patronyme
+library(WikidataQueryServiceR)
+
+# Puisque les chefs ne sont pas tous à jour on récupère une liste générale de tous les politiciens français vivants et leur(s) parti(s) associé(s)
+wikidata <- query_wikidata('SELECT DISTINCT ?prenom_nomLabel ?sexeLabel ?langue_maternelleLabel ?place_lieu_naissanceLabel ?metierLabel ?date_naissanceLabel ?date_decesLabel 
+WHERE {
+  ?chef wdt:P31 wd:Q5 .    #tous les êtres humains
+  ?chef wdt:P27 wd:Q142  .    #on limite aux pers françaises
+  ?chef wdt:P1559 ?prenom_nom .     #on recup le nom
+  ?chef wdt:P21 ?sexe .     #on recup le sexe
+  ?chef wdt:P103 ?langue_maternelle .     #on recup la langue maternelle
+  ?chef wdt:P19 ?lieu_naissance .     #on recup le lieu de naissance
+  ?chef wdt:P106 ?metier .     #on recup le métier
+  ?chef wdt:P569 ?date_naissance .   #on recup la date de naissance
+  ?chef wdt:P570 ?date_deces .   #on recup la date de déces
+  FILTER(YEAR(?date_naissance) > 1500)
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "fr". }
+}
+ORDER BY ?prenom_nomLabel ')
+
+wikidata2 <- wikidata |> 
+  mutate(prenom_nomLabel = stringi::stri_trans_general(str = gsub("-", " ", toupper(prenom_nomLabel)), id = "Latin-ASCII"))
+
+rio::export(wikidata, "data/wikidata_french_people.csv")
 ```
 
 
@@ -1580,6 +1627,162 @@ girafe(print(final_viz), width_svg = 8, height_svg = 6)
 
 
 
+```{r}
+#| eval: false
+#| include: false
+#| label: Visualisations de l'analyse des commentaires (début rapport d'audit)
+
+# Imports
+library(janitor)
+analyse_comm <- read_csv("data/analyse_commentaires/Analyse des commentaires-Grid view.csv")
+analyse_min <- read_csv("data/analyse_commentaires/graphique-reponses-ministeres.csv")
+
+
+#--- TREEMAP
+  #prépa données
+stat <- analyse_comm |> 
+  summarise(n = n(), .by = c(categorie, annotation)) |> 
+  mutate(percent = n/sum(n)*100)
+rio::export(stat, "data/analyse_commentaires/stat_treemap.csv")
+  # graph
+library(treemapify)
+mon_treemap <- stat |> 
+  mutate(ma_col = ifelse(categorie == "Compréhension", "black", "white")) |> 
+  ggplot(aes(area = n, fill = categorie, label = annotation, subgroup = categorie)) +
+  geom_treemap(col = "#FAF3EE", size = 3) +
+  geom_treemap_subgroup_border(colour = "#FAF3EE", size = 5) +
+  geom_treemap_text(aes(colour = ma_col), place = "topleft", size = 11, reflow = TRUE) +
+  geom_treemap_subgroup_text(aes(colour = ma_col), place = "bottomleft", alpha = 0.5, 
+                             fontface = "italic", size = 18) +
+  labs(title = "Un commentaire sur deux concerne l'accéssibilité des données", 
+       subtitle = "Classification des commentaires sur data.gouv.fr des jeux de données du MEN depuis janvier 2023") +
+  scale_color_manual(values = c("white" = "white", "black" = "grey15")) +
+  scale_fill_manual(values = c("Fiabilité" = "#411F6B",
+                               "Accessibilité" = "#af1b76",
+                               "Exploitabilité" = "#b85ee5",
+                               "Actualisation" = "#DB928A",
+                               "Compréhension" = "#f4d9ba",
+                               "Autre" = "grey80")) +
+  labs(fill = "Catégorie") +
+  theme(legend.position = "none",
+        plot.title = element_text(face = "bold", size = 18, color = "#222222"),
+        plot.subtitle = element_text(face = "italic", color = "#222222"),
+        panel.background = element_rect(fill="transparent", color=NA),
+        plot.background = element_rect(fill="transparent", color=NA))
+mon_treemap
+ggsave(file = "files/treemap_global_comm.png", plot = mon_treemap, 
+       width = 8, height = 6, bg = "transparent")
+
+
+#--- BARPLOT
+  #prépa données
+stat <- analyse_comm |> 
+  tabyl(subject)
+rio::export(stat, "data/analyse_commentaires/stat_barplot.csv")
+  # graph
+mon_barplot <- stat |> 
+    mutate(subject = str_replace_all(subject, c("Indices de position sociale" = "IPS",
+                                                "général et technologique" = "GT")),
+           subject = fct_reorder(subject, n)) |> 
+    ggplot()+
+        geom_bar(aes(x = subject, y = n), 
+                 stat = "identity", width = .7, fill = "#AF1B76", alpha = .8) +
+        geom_text(aes(y = n-.02*max(n), x = subject, label = n), 
+                  color = "white", check_overlap = T, hjust = 1) +
+        scale_x_discrete(labels = function(x) stringr::str_wrap(x, width = 40)) +
+        coord_flip() +
+        labs(y = "Nombre de commentaires", 
+             title = "Le calendrier scolaire rassemble 34% des commentaires",
+             subtitle = "Classification des commentaires sur data.gouv.fr des jeux de données du MEN depuis janvier 2023") +
+        theme_custom() +
+        theme(legend.position = "none",
+              panel.grid.major.x = ggplot2::element_line(color = "#cbcbcb"),
+              panel.grid.major.y = ggplot2::element_blank(),
+              axis.text.y = ggplot2::element_text(size = 10, color = "#222222"),
+              axis.title = ggplot2::element_text(size = 15, color = "#222222"),
+              axis.title.y = element_blank(),
+              plot.title = element_text(face = "bold", size = 18, color = "#222222"),
+              plot.subtitle = element_text(face = "italic", size = 11, color = "#222222"),
+              panel.background = element_rect(fill="transparent", color=NA),
+              plot.background = element_rect(fill="transparent", color=NA))
+ggsave(file = "files/barplot_global_comm.png", plot = mon_barplot, 
+       width = 8, height = 6, bg = "transparent")
+
+
+#--- BARPLOT comp ministères
+  # graph
+mon_barplot2 <- analyse_min |> 
+    mutate(ministere = fct_reorder(ministere, taux_reponse_pct)) |>
+    ggplot()+
+        geom_col(aes(x = ministere, y = 1), 
+                 fill = "#f9edf4", col = "#f9edf4", width = .7) +
+        geom_bar(aes(x = ministere, y = taux_reponse_pct/100, 
+                     alpha = ministere != "Éducation nationale"), 
+                 stat = "identity", width = .7, fill = "#AF1B76", col = "#DB99C1") +
+        geom_text(aes(y = 0.01, x = ministere, label = paste(discussions_total, "sollicitations")), 
+                  color = "white", check_overlap = T, hjust = 0) +
+        scale_alpha_manual(values = c(.9, .4)) +
+        scale_y_continuous(labels = scales::percent, limits = c(0,1)) +
+        coord_flip() +
+        labs(y = "Taux de réponse aux commentaires", 
+             title = "Le ministère de l'Éducation nationale a répondu a près de 86% \ndes sollicitations des utilisateurs de ses jeux",
+             subtitle = "Comparaison du taux de réponse aux sollicitations datagouv par les principaux ministères depuis septembre 2023") +
+        theme_custom() +
+        theme(legend.position = "none",
+              panel.grid.major.x = ggplot2::element_line(color = "#cbcbcb"),
+              panel.grid.major.y = ggplot2::element_blank(),
+              axis.text.y = ggplot2::element_text(size = 10, color = "#222222"),
+              axis.title = ggplot2::element_text(size = 15, color = "#222222"),
+              axis.title.y = element_blank(),
+              plot.title = element_text(face = "bold", size = 18, color = "#222222"),
+              plot.subtitle = element_text(face = "italic", size = 11, color = "#222222"),
+              panel.background = element_rect(fill="transparent", color=NA),
+              plot.background = element_rect(fill="transparent", color=NA))
+ggsave(file = "files/barplot_comp_min.png", plot = mon_barplot2, 
+       width = 8, height = 6, bg = "transparent")
+
+
+#--- BARPLOT comp ministères, forme : grouped bar chart
+  # prépa données
+k <- max(analyse_min$taux_reponse_pct / 100) / max(analyse_min$discussions_total)
+mon_barplot3 <- analyse_min |>
+  mutate(ministere = fct_reorder(ministere, taux_reponse_pct),
+         discussions_scaled = discussions_total * k) |>
+  pivot_longer(cols = c(taux_reponse_pct, discussions_scaled),
+               names_to = "serie", values_to = "valeur") |>
+  mutate(valeur = if_else(serie == "taux_reponse_pct", valeur / 100, valeur),
+         alpha_var = ministere != "Éducation nationale",
+         serie = factor(serie, levels = c("taux_reponse_pct", "discussions_scaled"))) |>
+  # graph
+  ggplot(aes(x = ministere, y = valeur, fill = serie, alpha = alpha_var)) +
+  geom_bar(stat = "identity", position = position_dodge(width = .7), width = .7, col = NA) +
+  scale_fill_manual(values = c("taux_reponse_pct" = "#AF1B76", "discussions_scaled" = "#DB928A")) +
+  scale_alpha_manual(values = c("TRUE" = .6, "FALSE" = .9)) +
+  scale_y_continuous(
+    name = "Taux de réponse",
+    labels = scales::percent,
+    limits = c(0, max(analyse_min$taux_reponse_pct / 100) * 1.05),
+    sec.axis = sec_axis(~ . / k, name = "Nombre de sollicitations")
+  ) +
+  labs(x = "Ministère", 
+       title = "Le ministère de l'Éducation nationale a répondu a près de 86% des \nsollicitations des utilisateurs de ses jeux",
+       subtitle = "Comparaison du taux de réponse et du nombre de sollicitations datagouv par les principaux ministères depuis septembre 2023") +
+  theme_custom() +
+  theme(legend.position = "none",
+        axis.text.y = element_text(size = 10, color = "#222222"),
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        axis.title = element_text(size = 15, color = "#222222"),
+        plot.title = element_text(face = "bold", size = 18, color = "#222222"),
+        axis.title.y = element_text(color = "#AF1B76", margin = margin(t = 0, r = 14, b = 0, l = 0)),
+        axis.title.y.right = element_text(color = "#DB928A"),
+        axis.ticks.x = element_line(color = "grey40"),
+        plot.subtitle = element_text(face = "italic", size = 11, color = "#222222"),
+        panel.background = element_rect(fill = "transparent", color = NA),
+        plot.background = element_rect(fill = "transparent", color = NA))
+ggsave(file = "files/barplot_comp_min2.png", plot = mon_barplot3, 
+       width = 9, height = 7, bg = "transparent")
+  
+```
 
 
 

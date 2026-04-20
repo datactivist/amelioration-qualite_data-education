@@ -1,0 +1,12 @@
+categorie,annotation,n
+Fiabilité,Erreur dans les données fournies,5
+Accessibilité,Absence de données,15
+Exploitabilité,Formatage non respecté,5
+Fiabilité,Incohérence des données,3
+Accessibilité,Lien mort,2
+Accessibilité,Demande de jeu de données (set),5
+Actualisation,Absence de mise à jour,1
+Compréhension,Absence de description des variables,2
+Actualisation,Erreur d'actualisation,2
+Autre,Proposition de mots-clefs,1
+Compréhension,Descriptions imprécises,3
