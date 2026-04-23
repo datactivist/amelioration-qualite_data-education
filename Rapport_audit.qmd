@@ -1786,7 +1786,72 @@ ggsave(file = "files/barplot_comp_min2.png", plot = mon_barplot3,
 
 
 
+```{r}
+#| eval: false
+#| include: false
+#| label: Transformation de données pour les dataviz dans le Studio
 
 
+#--- Carte des établissements en clusters
 
 
+# Imports
+effectifs_ecoles <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-ecoles-effectifs-nb_classes/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B", ";")
+effectifs_colleges <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-college-effectifs-niveau-sexe-lv/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B", ";")
+effectifs_lyceesGT <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-lycee_gt-effectifs-niveau-sexe-lv/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B", ";")
+effectifs_lyceesPro <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-lycee_pro-effectifs-niveau-sexe-lv/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B", ";")
+geoloc_eta <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-adresse-et-geolocalisation-etablissements-premier-et-second-degre/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B", ";")
+
+# Compilation en un fichier
+effectifs_all <- bind_rows(
+  effectifs_ecoles |> 
+    filter(`Rentrée scolaire` == "2024") |> 
+    left_join(geoloc_eta |> select(`Numéro d'UAI`, `Latitude WGS84`, `Longitude WGS84`), 
+              by = c("Numéro de l'école" = "Numéro d'UAI")) |> 
+    select(`Numéro de l'école`, Secteur, `Nombre total d'élèves`, `Latitude WGS84`, `Longitude WGS84`) |> 
+    rename(`Nombre d'élèves` = `Nombre total d'élèves`, UAI = `Numéro de l'école`) |> 
+    mutate(Niveau = "École"),
+  effectifs_colleges |> 
+    filter(`Rentrée scolaire` == "2024-01-01") |> 
+    left_join(geoloc_eta |> select(`Numéro d'UAI`, `Latitude WGS84`, `Longitude WGS84`), 
+              by = c("UAI" = "Numéro d'UAI")) |> 
+    select(UAI, Secteur, nombre_eleves_total, `Latitude WGS84`, `Longitude WGS84`) |> 
+    rename(`Nombre d'élèves` = nombre_eleves_total) |> 
+    mutate(Niveau = "Collège"),
+  effectifs_lyceesGT |> 
+    filter(`Rentrée scolaire` == "2024-01-01") |> 
+    left_join(geoloc_eta |> select(`Numéro d'UAI`, `Latitude WGS84`, `Longitude WGS84`), 
+              by = c("UAI" = "Numéro d'UAI")) |> 
+    select(UAI, Secteur, `Nombre d'élèves`, `Latitude WGS84`, `Longitude WGS84`) |> 
+    mutate(Niveau = "Lycée GT"),
+  effectifs_lyceesPro |> 
+    filter(`Rentrée scolaire` == "2024") |> 
+    left_join(geoloc_eta |> select(`Numéro d'UAI`, `Latitude WGS84`, `Longitude WGS84`), 
+              by = c("UAI" = "Numéro d'UAI")) |> 
+    select(UAI, Secteur, `Nombre d'élèves`, `Latitude WGS84`, `Longitude WGS84`) |> 
+    mutate(Niveau = "Lycée professionnel")
+)
+rio::export(effectifs_all, "data/dataviz/effectifs_compiles_carto_clusters.csv")
+
+
+#--- Évolution des langues vivantes
+
+# Imports
+lv_colleges <- read_delim("data/dataviz/effectifs-deleves-en-college-copie.csv", ";")
+lv_lyceesGT <- read_delim("data/dataviz/effectifs-deleves-en-lycee-denseignement-general-et-technologique-copie.csv", ";")
+lv_lyceesPro <- read_delim("data/dataviz/effectifs-deleves-en-lycee-professionnel-copie.csv", ";")
+
+# Compilation en un fichier
+lv_all <- bind_rows(
+  lv_colleges |> 
+    select(`Rentrée scolaire`, Académie, Secteur, lv1_allemand:lv2_autres_langues) |> 
+    mutate(Niveau = "Collège", `Rentrée scolaire` = as.character(`Rentrée scolaire`)),
+  lv_lyceesGT |> 
+    select(`Rentrée scolaire`, Académie, Secteur, lv1_allemand:lv2_autres_langues) |> 
+    mutate(Niveau = "Lycée GT", `Rentrée scolaire` = as.character(`Rentrée scolaire`)),
+  lv_lyceesPro |> 
+    select(`Rentrée scolaire`, Académie, Secteur, lv1_allemand:lv2_autres_langues) |> 
+    mutate(Niveau = "Lycée professionnel", `Rentrée scolaire` = as.character(`Rentrée scolaire`))
+)
+rio::export(lv_all, "data/dataviz/langues_vivantes_compilees.csv")
+```
