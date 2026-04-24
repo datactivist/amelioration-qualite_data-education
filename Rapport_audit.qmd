@@ -1805,31 +1805,36 @@ geoloc_eta <- read_delim("https://data.education.gouv.fr/api/explore/v2.1/catalo
 # Compilation en un fichier
 effectifs_all <- bind_rows(
   effectifs_ecoles |> 
-    filter(`Rentrée scolaire` == "2024") |> 
+    filter(`Rentrée scolaire` >= "2019") |> 
     left_join(geoloc_eta |> select(`Numéro d'UAI`, `Latitude WGS84`, `Longitude WGS84`), 
               by = c("Numéro de l'école" = "Numéro d'UAI")) |> 
-    select(`Numéro de l'école`, Secteur, `Nombre total d'élèves`, `Latitude WGS84`, `Longitude WGS84`) |> 
+    select(`Rentrée scolaire`, `Numéro de l'école`, Secteur, `Nombre total d'élèves`, 
+           `Latitude WGS84`, `Longitude WGS84`) |> 
     rename(`Nombre d'élèves` = `Nombre total d'élèves`, UAI = `Numéro de l'école`) |> 
-    mutate(Niveau = "École"),
+    mutate(Niveau = "École", `Rentrée scolaire` = as.character(`Rentrée scolaire`)),
   effectifs_colleges |> 
-    filter(`Rentrée scolaire` == "2024-01-01") |> 
     left_join(geoloc_eta |> select(`Numéro d'UAI`, `Latitude WGS84`, `Longitude WGS84`), 
               by = c("UAI" = "Numéro d'UAI")) |> 
-    select(UAI, Secteur, nombre_eleves_total, `Latitude WGS84`, `Longitude WGS84`) |> 
+    select(`Rentrée scolaire`, UAI, Secteur, nombre_eleves_total, 
+           `Latitude WGS84`, `Longitude WGS84`) |> 
     rename(`Nombre d'élèves` = nombre_eleves_total) |> 
-    mutate(Niveau = "Collège"),
+    mutate(Niveau = "Collège", 
+           `Rentrée scolaire` = as.character(`Rentrée scolaire`),
+           `Rentrée scolaire` = str_remove(`Rentrée scolaire`, "-01-01")),
   effectifs_lyceesGT |> 
-    filter(`Rentrée scolaire` == "2024-01-01") |> 
     left_join(geoloc_eta |> select(`Numéro d'UAI`, `Latitude WGS84`, `Longitude WGS84`), 
               by = c("UAI" = "Numéro d'UAI")) |> 
-    select(UAI, Secteur, `Nombre d'élèves`, `Latitude WGS84`, `Longitude WGS84`) |> 
-    mutate(Niveau = "Lycée GT"),
+    select(`Rentrée scolaire`, UAI, Secteur, `Nombre d'élèves`, 
+           `Latitude WGS84`, `Longitude WGS84`) |> 
+    mutate(Niveau = "Lycée GT", 
+           `Rentrée scolaire` = as.character(`Rentrée scolaire`),
+           `Rentrée scolaire` = str_remove(`Rentrée scolaire`, "-01-01")),
   effectifs_lyceesPro |> 
-    filter(`Rentrée scolaire` == "2024") |> 
     left_join(geoloc_eta |> select(`Numéro d'UAI`, `Latitude WGS84`, `Longitude WGS84`), 
               by = c("UAI" = "Numéro d'UAI")) |> 
-    select(UAI, Secteur, `Nombre d'élèves`, `Latitude WGS84`, `Longitude WGS84`) |> 
-    mutate(Niveau = "Lycée professionnel")
+    select(`Rentrée scolaire`, UAI, Secteur, `Nombre d'élèves`, 
+           `Latitude WGS84`, `Longitude WGS84`) |> 
+    mutate(Niveau = "Lycée professionnel", `Rentrée scolaire` = as.character(`Rentrée scolaire`))
 )
 rio::export(effectifs_all, "data/dataviz/effectifs_compiles_carto_clusters.csv")
 
@@ -1852,6 +1857,19 @@ lv_all <- bind_rows(
   lv_lyceesPro |> 
     select(`Rentrée scolaire`, Académie, Secteur, lv1_allemand:lv2_autres_langues) |> 
     mutate(Niveau = "Lycée professionnel", `Rentrée scolaire` = as.character(`Rentrée scolaire`))
-)
+) |> 
+  #calcul des pourcentages
+  mutate(lv1_all = lv1_allemand + lv1_anglais + lv1_espagnol + lv1_autres_langues,
+         lv2_all = lv2_allemand + lv2_anglais + lv2_espagnol + lv2_italien + lv2_autres_langues,
+         lv1_allemand = lv1_allemand / lv1_all * 100,
+         lv1_anglais = lv1_anglais / lv1_all * 100,
+         lv1_espagnol = lv1_espagnol / lv1_all * 100,
+         lv1_autres_langues = lv1_autres_langues / lv1_all * 100,
+         lv2_allemand = lv2_allemand / lv2_all * 100,
+         lv2_anglais = lv2_anglais / lv2_all * 100,
+         lv2_espagnol = lv2_espagnol / lv2_all * 100,
+         lv2_italien = lv2_italien / lv2_all * 100,
+         lv2_autres_langues = lv2_autres_langues / lv2_all * 100) |> 
+  select(-lv1_all, -lv2_all)
 rio::export(lv_all, "data/dataviz/langues_vivantes_compilees.csv")
 ```
